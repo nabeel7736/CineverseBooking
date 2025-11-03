@@ -64,15 +64,20 @@
       <hr class="my-5">
       <h2>Existing Movies</h2>
       <div class="row" id="moviesContainer">
-        <!-- Movie list will be loaded here -->
+      
       </div>
     </div>
   </div>
 
   <script>
     async function loadMovies() {
+      const token = localStorage.getItem('access_token')
+       if (!token) {
+        alert("Session expired. Please login again.");
+        return (window.location.href = "/login");
+      }
       const res = await fetch('/api/admin/movies', {
-        headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+        headers: { 'Authorization': `Bearer ${token}`  }
       });
       const data = await res.json();
       const container = document.getElementById('moviesContainer');
@@ -95,22 +100,41 @@
       }
     }
 
-    async function deleteMovie(id){
-      if(confirm('Are you sure to delete this movie?')){
-        const res = await fetch(`/api/admin/movies/${id}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
-        });
-        if(res.ok){ alert('Deleted successfully'); loadMovies(); }
-        else alert('Failed to delete movie');
+    // async function deleteMovie(id){
+    //   const token = localStorage.getItem('access_token')
+    //   if(confirm('Are you sure to delete this movie?')){
+    //     const res = await fetch(`/api/admin/movies/${id}`, {
+    //       method: 'DELETE',
+    //       headers: { 'Authorization': `Bearer ${token}` }
+    //     });
+    //     if(res.ok){ alert('Deleted successfully'); loadMovies(); }
+    //     else alert('Failed to delete movie');
+    //   }
+    // }
+
+     async function deleteMovie(id) {
+      const token = localStorage.getItem("access_token");
+      if (!confirm("Delete this movie?")) return;
+
+      const res = await fetch(`/api/admin/movies/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token} ` },
+      });
+
+      if (res.ok) {
+        alert("Movie deleted");
+        loadMovies();
+      } else {
+        alert("Failed to delete movie");
       }
     }
 
     document.getElementById('movieForm').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const token = localStorage.getItem('access_token')
       const res = await fetch('/api/admin/movies', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({
           title: document.getElementById('title').value,
           description: document.getElementById('description').value,

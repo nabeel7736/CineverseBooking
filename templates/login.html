@@ -1,107 +1,3 @@
-<!-- <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login | CineVerse</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body {
-      background: linear-gradient(135deg, #667eea, #764ba2);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .login-card {
-      background: white;
-      padding: 2rem;
-      border-radius: 15px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.2);
-      width: 100%;
-      max-width: 400px;
-    }
-    .login-card h2 {
-      font-weight: 700;
-      margin-bottom: 1.5rem;
-      text-align: center;
-      color: #333;
-    }
-    .btn-primary {
-      background: #764ba2;
-      border: none;
-    }
-    .btn-primary:hover {
-      background: #667eea;
-    }
-    .form-control:focus {
-      border-color: #764ba2;
-      box-shadow: 0 0 5px rgba(118,75,162,0.5);
-    }
-    .register-link {
-      text-align: center;
-      margin-top: 1rem;
-    }
-  </style>
-</head>
-<body>
-  <div class="login-card">
-    <h2>Login to CineVerse</h2>
-    <form id="loginForm">
-      <div class="mb-3">
-        <label for="email" class="form-label">Email</label>
-        <input type="email" id="email" class="form-control" placeholder="Enter your email" required>
-      </div>
-      <div class="mb-3">
-        <label for="password" class="form-label">Password</label>
-        <input type="password" id="password" class="form-control" placeholder="Enter your password" required>
-      </div>
-      <button type="submit" class="btn btn-primary w-100">Login</button>
-      <div class="register-link">
-        <small>Don't have an account? <a href="/register">Register here</a></small>
-      </div>
-    </form>
-  </div>
-
-  <script>
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: document.getElementById('email').value,
-          password: document.getElementById('password').value
-        })
-      });
-      const data = await res.json();
-      if(res.ok){
-        alert('Login successful!');
-        // localStorage.setItem('token', data.token);
-        // if(data.user && data.user.is_admin){
-        //   window.location.href = '/admin/dashboard?token=' + data.token;
-        // }
-        
-        if (data.user && data.user.is_admin) {
-  localStorage.setItem('token', data.token);
-  window.location.href = '/admin/dashboard';
-}
-        else {
-          window.location.href = '/';
-        }
-      } else {
-        alert(data.error || 'Login failed');
-      }
-
-      const button = document.querySelector('button');
-button.disabled = true;
-button.innerText = 'Logging in...';
-
-    });
-  </script>
-</body>
-</html> -->
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -185,11 +81,12 @@ button.innerText = 'Logging in...';
     const data = await res.json();
     console.log(data);
 
-    if (res.ok) {
+    if (res.ok && data.access_token) {
+      localStorage.setItem('access_token', data.access_token);
       alert('Login successful');
       window.location.href = '/admin/dashboard';
     } else {
-      alert(data.error || 'Login failed');
+      alert(data.error || 'Invalid Email or Password');
     }
 
   } catch (err) {

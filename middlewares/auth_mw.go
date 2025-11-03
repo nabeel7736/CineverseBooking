@@ -8,47 +8,44 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// func AuthMiddleware() gin.HandlerFunc {
-// 	return func(c *gin.Context) {
-// 		auth := c.GetHeader("Authorization")
-// 		token := ""
-// 		if auth == "" {
-// 			// For HTML requests, check query param
-// 			token = c.Query("token")
-// 			if token == "" {
-// 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing authorization header"})
-// 				return
-// 			}
-// 		} else {
-// 			parts := strings.Split(auth, " ")
-// 			if len(parts) != 2 || parts[0] != "Bearer" {
-// 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization header"})
-// 				return
-// 			}
-// 			token = parts[1]
-// 		}
-// 		claims, err := utils.ParseToken(token)
-// 		if err != nil {
-// 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token", "details": err.Error()})
-// 			return
-// 		}
-// 		// attach to context
-// 		c.Set("user_id", claims.UserID)
-// 		c.Set("is_admin", claims.IsAdmin)
-// 		c.Next()
-// 	}
-// }
+const ContextUserID = "userId"
+const ContextUserRole = "userRole"
+
+func AuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		auth := c.GetHeader("Authorization")
+		if auth == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authorization required"})
+			return
+		}
+		parts := strings.SplitN(auth, " ", 2)
+		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid authorization header"})
+			return
+		}
+		tokenStr := parts[1]
+		claims, err := utils.ValidateJWT(tokenStr)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token", "details": err.Error()})
+			return
+		}
+		// save in context
+		c.Set(ContextUserID, claims.UserID)
+		c.Set(ContextUserRole, claims.Role)
+		c.Next()
+	}
+}
 
 // func AdminMiddleware() gin.HandlerFunc {
 // 	return func(c *gin.Context) {
-// 		v, exists := c.Get("is_admin")
+// 		role, exists := c.Get(ContextUserRole)
 // 		if !exists {
-// 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "no admin info"})
+// 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "role missing"})
 // 			return
 // 		}
-// 		isAdmin, ok := v.(bool)
-// 		if !ok || !isAdmin {
-// 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "admin only"})
+// 		roleStr, ok := role.(string)
+// 		if !ok || roleStr != "admin" {
+// 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "admin access required"})
 // 			return
 // 		}
 // 		c.Next()
@@ -57,37 +54,29 @@ import (
 
 func AdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		role, exists := c.Get("role") // role should be set inside JWT claims
-		if !exists || role != "admin" {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Access denied: Admins only"})
-			c.Abort()
-			return
-		}
-		c.Next()
-	}
-}
-
-func AuthMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header missing"})
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "missing or invalid Authorization header"})
 			c.Abort()
 			return
 		}
 
 		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-		userID, role, err := utils.ValidateJWT(tokenStr)
+		claims, err := utils.ValidateJWT(tokenStr)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 			c.Abort()
 			return
 		}
 
-		// Set userID and role in context (so AdminMiddleware can use it)
-		c.Set("userID", userID)
-		c.Set("role", role)
+		if claims.Role != "admin" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+			c.Abort()
+			return
+		}
 
+		c.Set("userId", claims.UserID)
+		c.Set("role", claims.Role)
 		c.Next()
 	}
 }

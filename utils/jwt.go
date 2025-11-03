@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"os"
 	"time"
 
@@ -15,55 +14,122 @@ import (
 )
 
 type MyClaims struct {
-	UserID  uint `json:"user_id"`
-	IsAdmin bool `json:"is_admin"`
+	UserID uint   `json:"userId"`
+	Role   string `json:"role"`
 	jwt.RegisteredClaims
 }
 
+// func CreateToken(userID uint, Role string) (string, error) {
+// 	secret := os.Getenv("JWT_SECRET")
+// 	claims := jwt.MapClaims{
+// 		"userId": userID,
+// 		"role":   Role,
+// 		"exp":    time.Now().Add(time.Minute * 45).Unix(), // 45 minutes
+// 	}
+
+// 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+// 	return token.SignedString([]byte(secret))
+// }
+
 func CreateToken(userID uint, role string) (string, error) {
-	secret := os.Getenv("JWT_SECRET")
-	claims := jwt.MapClaims{
-		"userId": userID,
-		"role":   role,
-		"exp":    time.Now().Add(time.Minute * 45).Unix(), // 45 minutes
+	claims := MyClaims{
+		UserID: userID,
+		Role:   role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	secret := os.Getenv("JWT_SECRET")
 	return token.SignedString([]byte(secret))
 }
 
-func ValidateJWT(tokenStr string) (int, string, error) {
-	secret := os.Getenv("JWT_SECRET")
+// func CreateToken(userID uint, role string) (string, error) {
+// 	secret := os.Getenv("JWT_SECRET")
+// 	claims := MyClaims{
+// 		UserID: userID,
+// 		Role:   role,
+// 		RegisteredClaims: jwt.RegisteredClaims{
+// 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)),
+// 			IssuedAt:  jwt.NewNumericDate(time.Now()),
+// 		},
+// 	}
+// 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+// 	return token.SignedString([]byte(secret))
+// }
 
-	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-		// Validate signing method
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method")
-		}
+// func ValidateJWT(tokenStr string) (int, string, error) {
+// 	secret := os.Getenv("JWT_SECRET")
+
+// 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+// 		// Validate signing method
+// 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+// 			return nil, fmt.Errorf("unexpected signing method")
+// 		}
+// 		return []byte(secret), nil
+// 	})
+// 	if err != nil {
+// 		return 0, "", err
+// 	}
+
+// 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+// 		// Extract userId
+// 		userIDFloat, ok := claims["userId"].(float64)
+// 		if !ok {
+// 			return 0, "", fmt.Errorf("invalid userId in token")
+// 		}
+
+// 		// Extract role
+// 		role, ok := claims["role"].(string)
+// 		if !ok {
+// 			return 0, "", fmt.Errorf("invalid role in token")
+// 		}
+
+// 		return int(userIDFloat), role, nil
+// 	}
+
+// 	return 0, "", fmt.Errorf("invalid token")
+// }
+
+func ValidateJWT(tokenStr string) (*MyClaims, error) {
+	if tokenStr == "" {
+		return nil, errors.New("missing token")
+	}
+
+	secret := os.Getenv("JWT_SECRET")
+	token, err := jwt.ParseWithClaims(tokenStr, &MyClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(secret), nil
 	})
 	if err != nil {
-		return 0, "", err
+		return nil, err
 	}
 
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		// Extract userId
-		userIDFloat, ok := claims["userId"].(float64)
-		if !ok {
-			return 0, "", fmt.Errorf("invalid userId in token")
-		}
-
-		// Extract role
-		role, ok := claims["role"].(string)
-		if !ok {
-			return 0, "", fmt.Errorf("invalid role in token")
-		}
-
-		return int(userIDFloat), role, nil
+	claims, ok := token.Claims.(*MyClaims)
+	if !ok || !token.Valid {
+		return nil, errors.New("invalid token")
 	}
 
-	return 0, "", fmt.Errorf("invalid token")
+	return claims, nil
 }
+
+// func ValidateJWT(tokenStr string) (*MyClaims, error) {
+// 	secret := os.Getenv("JWT_SECRET")
+// 	if tokenStr == "" {
+// 		return nil, errors.New("empty token")
+// 	}
+// 	tkn, err := jwt.ParseWithClaims(tokenStr, &MyClaims{}, func(token *jwt.Token) (interface{}, error) {
+// 		return []byte(secret), nil
+// 	})
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	if claims, ok := tkn.Claims.(*MyClaims); ok && tkn.Valid {
+// 		return claims, nil
+// 	}
+// 	return nil, errors.New("invalid token claims")
+// }
 
 // func ParseToken(tokenStr string) (*MyClaims, error) {
 // 	secret := os.Getenv("JWT_SECRET")

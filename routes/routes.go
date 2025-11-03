@@ -45,10 +45,14 @@ func SetupRouter() *gin.Engine {
 	// Admin Routes (Require Admin Access)
 
 	admin := r.Group("/api/admin")
-	admin.Use(middlewares.AuthMiddleware(), middlewares.AdminMiddleware())
+	admin.Use(middlewares.AdminMiddleware())
 	{
+		admin.GET("/movies", controllers.AdminListMovies(config.DB))
 		admin.POST("/movies", controllers.AdminAddMovie(config.DB))
+		admin.DELETE("/movies/:id", controllers.AdminDeleteMovie(config.DB))
+		admin.GET("/shows", controllers.AdminListShows(config.DB))
 		admin.POST("/shows", controllers.AdminAddShow(config.DB))
+		admin.DELETE("/shows/:id", controllers.AdminDeleteShow(config.DB))
 		admin.GET("/bookings", controllers.AdminListBookings(config.DB))
 		admin.PATCH("/bookings/:id", controllers.AdminUpdateBookingStatus(config.DB))
 		admin.GET("/dashboard", controllers.AdminDashboard(config.DB))
