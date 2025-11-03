@@ -54,47 +54,6 @@ func AdminAddMovie(db *gorm.DB) gin.HandlerFunc {
 }
 
 // Admin: Create show
-func AdminAddShow(db *gorm.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var payload struct {
-			MovieID uint    `json:"movie_id" form:"movie_id"`
-			Hall    string  `json:"hall" form:"hall"`
-			Start   string  `json:"start_time" form:"start_time"` // RFC3339 or custom parse
-			Seats   int     `json:"seats_total" form:"seats_total"`
-			Price   float64 `json:"price" form:"price"`
-		}
-		if err := c.ShouldBind(&payload); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		var movie models.Movie
-		if err := db.First(&movie, payload.MovieID).Error; err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid movie id"})
-			return
-		}
-
-		// parse time
-		t, err := time.Parse("2006-01-02T15:04", payload.Start)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid datetime format"})
-			return
-		}
-
-		show := models.Show{
-			MovieID:     payload.MovieID,
-			Hall:        payload.Hall,
-			StartTime:   t,
-			SeatsTotal:  payload.Seats,
-			SeatsBooked: 0,
-			Price:       payload.Price,
-		}
-		if err := db.Create(&show).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusCreated, gin.H{"show": show})
-	}
-}
 
 // Admin: List all bookings (with optional status filter)
 func AdminListBookings(db *gorm.DB) gin.HandlerFunc {
@@ -168,12 +127,76 @@ func AdminListMovies(db *gorm.DB) gin.HandlerFunc {
 func AdminDeleteMovie(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		idStr := c.Param("id")
-		id, _ := strconv.Atoi(idStr)
-		if err := db.Delete(&models.Movie{}, id).Error; err != nil {
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Movie ID"})
+			return
+		}
+
+		var movie models.Movie
+		if err := db.First(&movie, id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Movie not Found"})
+			return
+		}
+
+		if err := db.Unscoped().Delete(&movie, id).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"message": "movie deleted"})
+		var movies []models.Movie
+		db.Find(&movies)
+		c.JSON(http.StatusOK, gin.H{"message": "movie deleted", "movies": movies})
+	}
+}
+
+func AdminAddShow(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var payload struct {
+			MovieID int     `json:"movie_id" form:"movie_id"`
+			Hall    string  `json:"hall" form:"hall"`
+			Start   string  `json:"start_time" form:"start_time"` // RFC3339 or custom parse
+			Seats   int     `json:"seats_total" form:"seats_total"`
+			Price   float64 `json:"price" form:"price"`
+		}
+		if err := c.ShouldBind(&payload); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		var movie models.Movie
+		if err := db.First(&movie, payload.MovieID).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid movie id"})
+			return
+		}
+
+		// parse time
+		// t, err := time.Parse("2006-01-02T15:04", payload.Start)
+		// if err != nil {
+		// 	c.JSON(http.StatusBadRequest, gin.H{"error": "invalid datetime format"})
+		// 	return
+		// }
+		t, err := time.Parse(time.RFC3339, payload.Start)
+		if err != nil {
+			// fallback: handle "2006-01-02T15:04" (without seconds)
+			t, err = time.Parse("2006-01-02T15:04", payload.Start)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid datetime format"})
+				return
+			}
+		}
+
+		show := models.Show{
+			MovieID:     payload.MovieID,
+			Hall:        payload.Hall,
+			StartTime:   t,
+			SeatsTotal:  payload.Seats,
+			SeatsBooked: 0,
+			Price:       payload.Price,
+		}
+		if err := db.Create(&show).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusCreated, gin.H{"show": show})
 	}
 }
 

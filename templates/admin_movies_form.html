@@ -88,15 +88,17 @@
           col.className = 'col-md-4 mb-4';
           col.innerHTML = `
             <div class="card p-2">
-              <img src="${m.poster_url || 'https://via.placeholder.com/400x300'}" class="img-fluid mb-2">
+              <img src="${m.posterUrl || 'https://via.placeholder.com/400x300'}" class="img-fluid mb-2">
               <h5>${m.title}</h5>
               <p>${m.description ? m.description.substring(0, 80)+'...' : ''}</p>
-              <p><strong>Duration:</strong> ${m.duration} min</p>
-              <button class="btn btn-danger w-100" onclick="deleteMovie(${m.id})">Delete</button>
+              <p><strong>Duration:</strong> ${m.duration_min} min</p>
+              <button class="btn btn-danger w-100" onclick="deleteMovie(${m.ID})">Delete</button>
             </div>
           `;
-          container.appendChild(col);
+          container.appendChild(col); 
         });
+      }else{
+        alert(data.error || "Failed to load Movies")
       }
     }
 
@@ -112,19 +114,20 @@
     //   }
     // }
 
-     async function deleteMovie(id) {
+     async function deleteMovie(ID) {
       const token = localStorage.getItem("access_token");
       if (!confirm("Delete this movie?")) return;
 
-      const res = await fetch(`/api/admin/movies/${id}`, {
+      const res = await fetch(`/api/admin/movies/${ID}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token} ` },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (res.ok) {
         alert("Movie deleted");
         loadMovies();
       } else {
+        const data =await res.json();
         alert("Failed to delete movie");
       }
     }
@@ -138,8 +141,9 @@
         body: JSON.stringify({
           title: document.getElementById('title').value,
           description: document.getElementById('description').value,
-          poster_url: document.getElementById('poster_url').value,
-          duration: document.getElementById('duration').value
+          posterUrl: document.getElementById('poster_url').value,
+          duration_min: document.getElementById('duration').value
+          // id: document.getElementById('id').value
         })
       });
       const data = await res.json();

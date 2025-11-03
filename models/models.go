@@ -24,27 +24,40 @@ type Movie struct {
 	Title       string    `gorm:"not null" json:"title"`
 	Description string    `gorm:"type:text" json:"description"`
 	DurationMin int       `json:"duration_min"` // duration in minutes
-	ReleaseDate time.Time `json:"release_date"`
-	PosterURL   string    `json:"poster_url"`
+	ReleaseDate time.Time `gorm:"type:timestamp" json:"release_date"`
+	PosterURL   string    `json:"posterUrl"`
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	DeletedAt   gorm.DeletedAt `gorm:"index"`
 	Shows       []Show
 }
 
+// type Show struct {
+// 	ID          uint      `gorm:"primaryKey"`
+// 	MovieID     int       `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"movie_id"`
+// 	Movie       Movie     `gorm:"foreignKey:MovieID" json:"movie"`
+// 	Hall        string    `json:"hall"`
+// 	StartTime   time.Time `json:"start_time"`
+// 	SeatsTotal  int       `json:"seats_total"`
+// 	SeatsBooked int       `json:"seats_booked"`
+// 	Price       float64   `json:"price"`
+// 	CreatedAt   time.Time
+// 	UpdatedAt   time.Time
+// 	DeletedAt   gorm.DeletedAt `gorm:"index"`
+// }
+
 type Show struct {
-	ID uint `gorm:"primaryKey"`
-	// MovieID     uint `gorm:"index"`
-	MovieID     uint      `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"movie_id"`
-	Movie       Movie     `json:"movie"`
-	Hall        string    `json:"hall"`
-	StartTime   time.Time `json:"start_time"`
-	SeatsTotal  int       `json:"seats_total"`
-	SeatsBooked int       `json:"seats_booked"`
-	Price       float64   `json:"price"`
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	DeletedAt   gorm.DeletedAt `gorm:"index"`
+	ID          uint           `gorm:"primaryKey" json:"id"`
+	MovieID     int            `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"movie_id"`
+	Movie       Movie          `gorm:"foreignKey:MovieID" json:"movie"`
+	Hall        string         `json:"hall"`
+	StartTime   time.Time      `json:"start_time"`
+	SeatsTotal  int            `json:"seats_total"`
+	SeatsBooked int            `json:"seats_booked"`
+	Price       float64        `json:"price"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 }
 
 type Booking struct {

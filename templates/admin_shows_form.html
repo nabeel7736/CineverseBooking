@@ -1,27 +1,68 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Manage Shows | CineVerse Admin</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body { background: #f8f9fa; font-family: 'Arial', sans-serif; }
+    body {
+      background: #f8f9fa;
+      font-family: 'Arial', sans-serif;
+    }
+
     .sidebar {
-      background: #764ba2; color: white;
+      background: #764ba2;
+      color: white;
       min-height: 100vh;
       padding: 2rem 1rem;
     }
-    .sidebar a { color: white; display: block; margin: 1rem 0; text-decoration: none; font-weight: 500; }
-    .sidebar a:hover { text-decoration: underline; }
-    .content { padding: 2rem; flex-grow: 1; }
-    .card { border-radius: 15px; box-shadow: 0 0 15px rgba(0,0,0,0.1); padding: 2rem; }
-    h2 { color: #333; margin-bottom: 1.5rem; }
-    .btn-primary { background: #764ba2; border: none; }
-    .btn-primary:hover { background: #667eea; }
-    .form-control:focus { border-color: #764ba2; box-shadow: 0 0 5px rgba(118,75,162,0.5); }
+
+    .sidebar a {
+      color: white;
+      display: block;
+      margin: 1rem 0;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .sidebar a:hover {
+      text-decoration: underline;
+    }
+
+    .content {
+      padding: 2rem;
+      flex-grow: 1;
+    }
+
+    .card {
+      border-radius: 15px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+      padding: 2rem;
+    }
+
+    h2 {
+      color: #333;
+      margin-bottom: 1.5rem;
+    }
+
+    .btn-primary {
+      background: #764ba2;
+      border: none;
+    }
+
+    .btn-primary:hover {
+      background: #667eea;
+    }
+
+    .form-control:focus {
+      border-color: #764ba2;
+      box-shadow: 0 0 5px rgba(118, 75, 162, 0.5);
+    }
   </style>
 </head>
+
 <body>
   <div class="d-flex">
     <div class="sidebar">
@@ -48,6 +89,15 @@
             <input type="time" id="time" class="form-control" required>
           </div>
           <div class="mb-3">
+            <label for="hall" class="form-label">Hall Name</label>
+            <input type="text" id="hall" class="form-control" placeholder="Hall 1" required>
+          </div>
+          <div class="mb-3">
+            <label for="price" class="form-label">Ticket Price</label>
+            <input type="number" id="price" class="form-control" placeholder="120" step="0.01" required>
+          </div>
+
+          <div class="mb-3">
             <label for="available_seats" class="form-label">Available Seats</label>
             <input type="number" id="available_seats" class="form-control" placeholder="100" required>
           </div>
@@ -62,20 +112,22 @@
     </div>
   </div>
 
-  <script>
+  <!-- <script>
     async function loadMoviesDropdown(){
       const token = localStorage.getItem('access_token')
-      const res = await fetch('/api/admin/shows', { headers: { 'Authorization': `Bearer ${token}` } });
+      const res = await fetch('/api/admin/movies', { headers: { 'Authorization': `Bearer ${token}` } });
       const data = await res.json();
       const select = document.getElementById('movie_id');
       select.innerHTML = '';
-      if(res.ok){
+      if(res.ok && data.movies){
         data.movies.forEach(m => {
           const option = document.createElement('option');
-          option.value = m.id;
+          option.value = m.ID;
           option.textContent = m.title;
           select.appendChild(option);
         });
+      }else{
+        select.innerHTML = `<option disabled>No Movies Found</option>`;
       }
     }
 
@@ -85,28 +137,30 @@
       const data = await res.json();
       const container = document.getElementById('showsContainer');
       container.innerHTML = '';
-      if(res.ok){
+      if(res.ok && data.shows){
         data.shows.forEach(s => {
           const col = document.createElement('div');
           col.className = 'col-md-4 mb-4';
           col.innerHTML = `
             <div class="card p-2">
-              <h5>${s.movie_title}</h5>
+              <h5>${s.movie ? s.Movie.title : s.movie_title || 'Unknown Movie'}</h5>
               <p><strong>Date:</strong> ${s.date}</p>
               <p><strong>Time:</strong> ${s.time}</p>
               <p><strong>Seats:</strong> ${s.available_seats}</p>
-              <button class="btn btn-danger w-100" onclick="deleteShow(${s.id})">Delete</button>
+              <button class="btn btn-danger w-100" onclick="deleteShow(${s.ID})">Delete</button>
             </div>
           `;
           container.appendChild(col);
         });
+      }else{
+        container.innerHTML = `<p class="text-muted">No Shows available</p>`;
       }
     }
 
-    async function deleteShow(id){
+    async function deleteShow(ID){
             const token = localStorage.getItem('access_token')
       if(confirm('Are you sure to delete this show?')){
-        const res = await fetch(`/api/admin/shows/${id}`, {
+        const res = await fetch(`/api/admin/shows/${ID}`, {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -122,7 +176,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
         body: JSON.stringify({
-          movie_id: document.getElementById('movie_id').value,
+          movie_id: parseInt(document.getElementById('movie_id').value),
           date: document.getElementById('date').value,
           time: document.getElementById('time').value,
           available_seats: document.getElementById('available_seats').value
@@ -140,6 +194,110 @@
 
     loadMoviesDropdown();
     loadShows();
+  </script> -->
+
+  <script>
+    async function loadMoviesDropdown() {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch('/api/admin/movies', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      const select = document.getElementById('movie_id');
+      select.innerHTML = '';
+      if (res.ok && data.movies) {
+        data.movies.forEach(m => {
+          const option = document.createElement('option');
+          option.value = m.ID;
+          option.textContent = m.title;
+          select.appendChild(option);
+        });
+      } else {
+        select.innerHTML = `<option disabled>No Movies Found</option>`;
+      }
+    }
+
+    async function loadShows() {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch('/api/admin/shows', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      const container = document.getElementById('showsContainer');
+      container.innerHTML = '';
+      if (res.ok && data.shows) {
+        data.shows.forEach(s => {
+          const col = document.createElement('div');
+          col.className = 'col-md-4 mb-4';
+          col.innerHTML = `
+        <div class="card p-2">
+          <h5>${s.movie_title || 'Unknown Movie'}</h5>
+          <p><strong>Date:</strong> ${s.date}</p>
+          <p><strong>Time:</strong> ${s.time}</p>
+          <p><strong>Seats:</strong> ${s.available_seats}</p>
+          <button class="btn btn-danger w-100" onclick="deleteShow(${s.id})">Delete</button>
+        </div>`;
+          container.appendChild(col);
+        });
+      } else {
+        container.innerHTML = `<p class="text-muted">No Shows available</p>`;
+      }
+    }
+
+    async function deleteShow(id) {
+      const token = localStorage.getItem('access_token');
+      if (confirm('Are you sure to delete this show?')) {
+        const res = await fetch(`/api/admin/shows/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          alert('Deleted successfully');
+          loadShows();
+        } else {
+          alert('Failed to delete show');
+        }
+      }
+    }
+
+    document.getElementById('showForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const token = localStorage.getItem('access_token');
+
+      // combine date and time into one RFC3339 string
+      const date = document.getElementById('date').value;
+      const time = document.getElementById('time').value;
+      const datetime = `${date}T${time}`; // e.g. 2025-11-03T12:30
+
+      const res = await fetch('/api/admin/shows', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          movie_id: parseInt(document.getElementById('movie_id').value),
+          hall: document.getElementById('hall').value,
+          start_time: datetime,
+          seats_total: parseInt(document.getElementById('available_seats').value),
+          price: parseFloat(document.getElementById('price').value)
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        alert('Show added successfully');
+        document.getElementById('showForm').reset();
+        loadShows();
+      } else {
+        alert(data.error || 'Failed to add show');
+      }
+    });
+
+    loadMoviesDropdown();
+    loadShows();
   </script>
+
 </body>
+
 </html>
