@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"net/http"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -56,58 +55,69 @@ func AdminAddMovie(db *gorm.DB) gin.HandlerFunc {
 // Admin: Create show
 
 // Admin: List all bookings (with optional status filter)
-func AdminListBookings(db *gorm.DB) gin.HandlerFunc {
+func GetAllBookings(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var bookings []models.Booking
-		status := c.Query("status")
-		query := db.Preload("User").Preload("Show").Preload("Show.Movie")
-		query = query.Order("created_at desc")
-		if status != "" {
-			query = query.Where("status = ?", status)
 
+		search := c.Query("search")
+
+		query := db.Preload("User").Preload("Show").Preload("Seats").Preload("Payment")
+
+		if search != "" {
+			query = query.Joins("JOIN users ON users.id = bookings.user_id").
+				Where("LOWER(users.name) LIKE LOWER(?) OR LOWER(users.email) LIKE LOWER(?)", "%"+search+"%", "%"+search+"%")
 		}
-		if err := query.Find(&bookings).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+
+		if err := query.Order("bookings.created_at DESC").Find(&bookings).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch bookings"})
 			return
 		}
+
 		c.JSON(http.StatusOK, gin.H{"bookings": bookings})
 	}
 }
 
 // Admin: Update booking status
-func AdminUpdateBookingStatus(db *gorm.DB) gin.HandlerFunc {
+func UpdateBookingStatus(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		idStr := c.Param("id")
-		id, err := strconv.Atoi(idStr)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
-			return
-		}
 
-		var payload struct {
-			Status string `json:"status"`
-		}
-		if err := c.ShouldBindJSON(&payload); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
+		id := c.Param("id")
 		var booking models.Booking
 		if err := db.First(&booking, id).Error; err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "booking not found"})
-			return
-		}
-		validStatuses := []string{"pending", "confirmed", "cancelled"}
-		if !slices.Contains(validStatuses, payload.Status) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid status"})
-			return
-		}
-		booking.Status = payload.Status
-		if err := db.Save(&booking).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusNotFound, gin.H{"error": "Booking not found"})
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"booking": booking})
+		var body struct {
+			Status string `json:"status"`
+		}
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+			return
+		}
+
+		booking.Status = body.Status
+		if err := db.Save(&booking).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update booking"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Booking status updated successfully"})
+	}
+}
+
+// DeleteBooking — Admin: delete booking
+func DeleteBooking(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		id := c.Param("id")
+
+		if err := db.Delete(&models.Booking{}, id).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete booking"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Booking deleted successfully"})
 	}
 }
 

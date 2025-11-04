@@ -37,6 +37,7 @@
       <a href="/admin/movies">Manage Movies</a>
       <a href="/admin/shows">Manage Shows</a>
       <a href="/admin/bookings">Bookings</a>
+      <a href="/admin/users">Users</a>
     </div>
     <div class="content">
       <div class="card">
@@ -101,18 +102,6 @@
         alert(data.error || "Failed to load Movies")
       }
     }
-
-    // async function deleteMovie(id){
-    //   const token = localStorage.getItem('access_token')
-    //   if(confirm('Are you sure to delete this movie?')){
-    //     const res = await fetch(`/api/admin/movies/${id}`, {
-    //       method: 'DELETE',
-    //       headers: { 'Authorization': `Bearer ${token}` }
-    //     });
-    //     if(res.ok){ alert('Deleted successfully'); loadMovies(); }
-    //     else alert('Failed to delete movie');
-    //   }
-    // }
 
      async function deleteMovie(ID) {
       const token = localStorage.getItem("access_token");

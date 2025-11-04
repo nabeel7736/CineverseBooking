@@ -21,15 +21,6 @@ func GetMovies(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-// func GetMovies(c *gin.Context) {
-// 	var movies []models.Movie
-// 	if err := config.DB.Find(&movies).Error; err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch movies"})
-// 		return
-// 	}
-// 	c.JSON(http.StatusOK, gin.H{"movies": movies})
-// }
-
 func GetMovieDetails(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
@@ -44,13 +35,6 @@ func GetMovieDetails(db *gorm.DB) gin.HandlerFunc {
 
 func GetShowsByMovie(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// movieID := c.Param("movie_id")
-		// var shows []models.Show
-		// if err := db.Where("movie_id = ?", movieID).Find(&shows).Error; err != nil {
-		// 	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		// 	return
-		// }
-		// c.JSON(http.StatusOK, gin.H{"shows": shows})
 
 		id := c.Param("id")
 		var movie models.Movie
@@ -96,11 +80,11 @@ func BookTickets(db *gorm.DB) gin.HandlerFunc {
 		// transaction: create booking and update show.SeatsBooked
 		err := db.Transaction(func(tx *gorm.DB) error {
 			booking := models.Booking{
-				UserID:     userID,
-				ShowID:     show.ID,
-				SeatsCount: payload.Seats,
-				TotalPrice: float64(payload.Seats) * show.Price,
-				Status:     "confirmed",
+				UserID:      userID,
+				ShowID:      show.ID,
+				SeatsCount:  payload.Seats,
+				TotalAmount: float64(payload.Seats) * show.Price,
+				Status:      "confirmed",
 			}
 			if err := tx.Create(&booking).Error; err != nil {
 				return err

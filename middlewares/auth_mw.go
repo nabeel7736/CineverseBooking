@@ -36,22 +36,6 @@ func AuthMiddleware() gin.HandlerFunc {
 	}
 }
 
-// func AdminMiddleware() gin.HandlerFunc {
-// 	return func(c *gin.Context) {
-// 		role, exists := c.Get(ContextUserRole)
-// 		if !exists {
-// 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "role missing"})
-// 			return
-// 		}
-// 		roleStr, ok := role.(string)
-// 		if !ok || roleStr != "admin" {
-// 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "admin access required"})
-// 			return
-// 		}
-// 		c.Next()
-// 	}
-// }
-
 func AdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
@@ -77,6 +61,59 @@ func AdminMiddleware() gin.HandlerFunc {
 
 		c.Set("userId", claims.UserID)
 		c.Set("role", claims.Role)
+		c.Next()
+	}
+}
+
+// AdminOnly middleware restricts access to admin routes
+func AdminOnly() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, exists := c.Get(ContextUserRole)
+		if !exists || role != "admin" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Access restricted to admin only"})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+// UserOnly middleware restricts access to user routes
+func UserOnly() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		role, exists := c.Get(ContextUserRole)
+		if !exists || role != "user" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Access restricted to users only"})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+// PreventLoginWhenAuthenticated prevents logged-in users from accessing /login again
+func PreventLoginWhenAuthenticated() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		auth := c.GetHeader("Authorization")
+
+		if auth != "" {
+			tokenString := strings.TrimPrefix(auth, "Bearer ")
+			claims, err := utils.ValidateJWT(tokenString)
+			if err == nil && claims != nil {
+				role := claims.Role
+				// Redirect based on role
+				if role == "admin" {
+					c.Redirect(http.StatusFound, "/admin/dashboard")
+					c.Abort()
+					return
+				}
+				if role == "user" {
+					c.Redirect(http.StatusFound, "/")
+					c.Abort()
+					return
+				}
+			}
+		}
 		c.Next()
 	}
 }

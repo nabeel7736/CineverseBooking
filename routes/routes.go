@@ -36,10 +36,12 @@ func SetupRouter() *gin.Engine {
 
 	// Protected User Routes (Require Login)
 
-	user := r.Group("/api/user").Use(middlewares.AuthMiddleware())
+	user := r.Group("/api/user").Use(middlewares.AuthMiddleware(), middlewares.UserOnly())
 	{
 		user.POST("/book", controllers.BookTickets(config.DB))
 		user.GET("/mybookings", controllers.GetUserBookings(config.DB))
+		api.GET("/shows/:showId/seats", controllers.GetAvailableSeats(config.DB))
+		// api.POST("/bookings", controllers.CreateBooking(config.DB))
 	}
 
 	// Admin Routes (Require Admin Access)
@@ -53,9 +55,13 @@ func SetupRouter() *gin.Engine {
 		admin.GET("/shows", controllers.AdminListShows(config.DB))
 		admin.POST("/shows", controllers.AdminAddShow(config.DB))
 		admin.DELETE("/shows/:id", controllers.AdminDeleteShow(config.DB))
-		admin.GET("/bookings", controllers.AdminListBookings(config.DB))
-		admin.PATCH("/bookings/:id", controllers.AdminUpdateBookingStatus(config.DB))
+		admin.GET("/bookings", controllers.GetAllBookings(config.DB))
+		admin.PUT("/bookings/:id/status", controllers.UpdateBookingStatus(config.DB))
+		admin.DELETE("/bookings/:id", controllers.DeleteBooking(config.DB))
 		admin.GET("/dashboard", controllers.AdminDashboard(config.DB))
+		admin.GET("/users", controllers.GetAllUsers(config.DB))
+		admin.PUT("/users/:id/block", controllers.BlockUser(config.DB))
+		admin.DELETE("/users/:id", controllers.DeleteUser(config.DB))
 	}
 
 	// Public HTML Pages
@@ -64,7 +70,7 @@ func SetupRouter() *gin.Engine {
 		c.HTML(200, "public_movies.html", gin.H{})
 	})
 
-	r.GET("/login", func(c *gin.Context) {
+	r.GET("/login", middlewares.PreventLoginWhenAuthenticated(), func(c *gin.Context) {
 		c.HTML(200, "login.html", gin.H{})
 	})
 
@@ -97,6 +103,10 @@ func SetupRouter() *gin.Engine {
 	r.GET("/admin/bookings", func(c *gin.Context) {
 		token := c.Query("token")
 		c.HTML(200, "admin_bookings.html", gin.H{"Token": token})
+	})
+	r.GET("/admin/users", func(ctx *gin.Context) {
+		token := ctx.Query("token")
+		ctx.HTML(200, "admin_users.html", gin.H{"Token": token})
 	})
 
 	// Fallback for Unknown Routes

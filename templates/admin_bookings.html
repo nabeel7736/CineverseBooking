@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Bookings | CineVerse Admin</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f8f9fa; font-family: 'Arial', sans-serif; }
+    .sidebar {
+      background: #764ba2; color: white;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+    .sidebar a { color: white; display: block; margin: 1rem 0; text-decoration: none; font-weight: 500; }
+    .sidebar a:hover { text-decoration: underline; }
+    .content { padding: 2rem; flex-grow: 1; }
+    .card {
+      border-radius: 15px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      padding: 2rem;
+      background: white;
+    }
+    h2 { color: #333; margin-bottom: 1.5rem; }
+    .btn-primary { background: #764ba2; border: none; }
+    .btn-primary:hover { background: #667eea; }
+    .form-control:focus {
+      border-color: #764ba2;
+      box-shadow: 0 0 5px rgba(118,75,162,0.5);
+    }
+    .status-badge { font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <div class="d-flex">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <h3>CineVerse Admin</h3>
+      <a href="/admin/dashboard">Dashboard</a>
+      <a href="/admin/movies">Manage Movies</a>
+      <a href="/admin/shows">Manage Shows</a>
+      <a href="/admin/bookings">Bookings</a>
+      <a href="/admin/users">Users</a>
+      <hr>
+      <!-- <button class="btn btn-light w-100 mt-3" onclick="logout()">Logout</button> -->
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <div class="card">
+        <h2>Manage Bookings</h2>
+
+        <div class="d-flex justify-content-between mb-3">
+          <input type="text" id="searchInput" class="form-control w-25" placeholder="Search user...">
+          <button class="btn btn-primary" onclick="fetchBookings()">Refresh</button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-striped table-bordered align-middle">
+            <thead class="table-dark">
+              <tr>
+                <th>ID</th>
+                <th>User</th>
+                <th>Movie</th>
+                <th>Seats</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Method</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="bookingTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = '/api/admin/bookings';
+
+    async function fetchBookings() {
+      const search = document.getElementById('searchInput').value;
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        alert('Session expired. Please login again.');
+        return (window.location.href = '/login');
+      }
+
+      const res = await fetch(`${API}?search=${search}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        renderBookings(data.bookings);
+      } else {
+        alert(data.error || 'Failed to load bookings.');
+      }
+    }
+
+    function renderBookings(bookings) {
+      const body = document.getElementById('bookingTableBody');
+      body.innerHTML = '';
+
+      bookings.forEach(b => {
+        const seatList = b.seats ? b.seats.map(s => s.seat_code).join(', ') : 'N/A';
+        const badgeClass =
+          b.status === 'confirmed' ? 'bg-success' :
+          b.status === 'cancelled' ? 'bg-danger' : 'bg-warning';
+
+        body.innerHTML += `
+          <tr>
+            <td>${b.id}</td>
+            <td>${b.user ? b.user.name : 'N/A'}</td>
+            <td>${b.show ? b.show.movie_name || b.show.title || 'N/A' : 'N/A'}</td>
+            <td>${seatList}</td>
+            <td>₹${b.total_amount}</td>
+            <td><span class="badge ${badgeClass} status-badge">${b.status}</span></td>
+            <td>${b.payment_method}</td>
+            <td>
+              <button class="btn btn-sm btn-success me-1" onclick="updateStatus(${b.id}, 'confirmed')">Confirm</button>
+              <button class="btn btn-sm btn-warning me-1" onclick="updateStatus(${b.id}, 'cancelled')">Cancel</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteBooking(${b.id})">Delete</button>
+            </td>
+          </tr>`;
+      });
+    }
+
+    async function updateStatus(id, status) {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`${API}/${id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status })
+      });
+      const data = await res.json();
+      alert(data.message || 'Status updated.');
+      fetchBookings();
+    }
+
+    async function deleteBooking(id) {
+      const token = localStorage.getItem('access_token');
+      if (!confirm('Are you sure you want to delete this booking?')) return;
+
+      const res = await fetch(`${API}/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      alert(data.message || 'Booking deleted.');
+      fetchBookings();
+    }
+
+    function logout() {
+      localStorage.removeItem('access_token');
+      window.location.href = '/login';
+    }
+
+    fetchBookings();
+  </script>
+</body>
+</html>

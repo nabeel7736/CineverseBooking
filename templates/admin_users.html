@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manage Users | CineVerse Admin</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body { background: #f8f9fa; font-family: 'Arial', sans-serif; }
+    .sidebar {
+      background: #764ba2; color: white;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+    .sidebar a { color: white; display: block; margin: 1rem 0; text-decoration: none; font-weight: 500; }
+    .sidebar a:hover { text-decoration: underline; }
+    .content { padding: 2rem; flex-grow: 1; }
+    .card {
+      border-radius: 15px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      padding: 2rem;
+    }
+    h2 { color: #333; margin-bottom: 1.5rem; }
+    .btn-primary { background: #764ba2; border: none; }
+    .btn-primary:hover { background: #667eea; }
+    .form-control:focus {
+      border-color: #764ba2;
+      box-shadow: 0 0 5px rgba(118,75,162,0.5);
+    }
+    .table th, .table td {
+      vertical-align: middle !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="d-flex">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <h3>CineVerse Admin</h3>
+      <a href="/admin/dashboard">Dashboard</a>
+      <a href="/admin/movies">Manage Movies</a>
+      <a href="/admin/shows">Manage Shows</a>
+      <a href="/admin/bookings">Bookings</a>
+      <a href="/admin/users" style="text-decoration: underline;">Manage Users</a>
+      <hr />
+      <!-- <button class="btn btn-light w-100" onclick="logout()">Logout</button> -->
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <div class="card">
+        <h2 class="text-center mb-4">Manage Users</h2>
+
+        <div class="d-flex justify-content-between mb-3">
+          <input type="text" id="searchInput" class="form-control w-25" placeholder="Search user..." />
+          <button class="btn btn-primary" onclick="fetchUsers()">Refresh</button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-striped table-bordered align-middle">
+            <thead class="table-dark">
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Bookings</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="userTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = '/api/admin/users';
+
+    async function fetchUsers() {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        alert('Session expired. Please login again.');
+        return (window.location.href = '/login');
+      }
+
+      const search = document.getElementById('searchInput').value || '';
+      const res = await fetch(`${API}?search=${search}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      const data = await res.json();
+
+      if (res.ok) renderUsers(data.users || []);
+      else alert(data.error || 'Failed to fetch users');
+    }
+
+    function renderUsers(users) {
+      const body = document.getElementById('userTableBody');
+      body.innerHTML = '';
+
+      if (!users.length) {
+        body.innerHTML = `<tr><td colspan="7" class="text-center">No users found</td></tr>`;
+        return;
+      }
+
+      users.forEach((u) => {
+        const status = u.blocked ? 'Blocked' : 'Active';
+        body.innerHTML += `
+          <tr>
+            <td>${u.id}</td>
+            <td>${u.full_name}</td>
+            <td>${u.email}</td>
+            <td>${u.role}</td>
+            <td>${u.bookings_count || 0}</td>
+            <td><span class="badge ${u.blocked ? 'bg-danger' : 'bg-success'}">${status}</span></td>
+            <td>
+              <button class="btn btn-sm btn-warning me-2" onclick="toggleBlock(${u.id})">
+                ${u.blocked ? 'Unblock' : 'Block'}
+              </button>
+              <button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})">Delete</button>
+            </td>
+          </tr>`;
+      });
+    }
+
+    async function toggleBlock(id) {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`${API}/${id}/block`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      const data = await res.json();
+      alert(data.message || 'Status updated');
+      fetchUsers();
+    }
+
+    async function deleteUser(id) {
+      const token = localStorage.getItem('access_token');
+      if (!confirm('Are you sure you want to delete this user?')) return;
+
+      const res = await fetch(`${API}/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      const data = await res.json();
+      alert(data.message || 'User deleted');
+      fetchUsers();
+    }
+
+    // function logout() {
+    //   localStorage.removeItem('access_token');
+    //   window.location.href = '/login';
+    // }
+
+    fetchUsers();
+  </script>
+</body>
+</html>
