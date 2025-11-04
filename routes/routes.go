@@ -56,6 +56,7 @@ func SetupRouter() *gin.Engine {
 		admin.POST("/shows", controllers.AdminAddShow(config.DB))
 		admin.DELETE("/shows/:id", controllers.AdminDeleteShow(config.DB))
 		admin.GET("/bookings", controllers.GetAllBookings(config.DB))
+		admin.GET("/bookings/:id", controllers.GetBookingDetails(config.DB))
 		admin.PUT("/bookings/:id/status", controllers.UpdateBookingStatus(config.DB))
 		admin.DELETE("/bookings/:id", controllers.DeleteBooking(config.DB))
 		admin.GET("/dashboard", controllers.AdminDashboard(config.DB))

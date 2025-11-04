@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -36,7 +36,6 @@
 </head>
 <body>
   <div class="d-flex">
-    <!-- Sidebar -->
     <div class="sidebar">
       <h3 class="mb-4">CineVerse Admin</h3>
       <a href="/admin/dashboard" id="link-dashboard">Dashboard</a>
@@ -48,12 +47,10 @@
       <button class="btn btn-light w-100 mt-3" onclick="logout()">Logout</button>
     </div>
 
-    <!-- Content -->
     <div class="content flex-grow-1">
       <h2 class="dashboard-header">Welcome, Admin!</h2>
       <p class="text-muted mb-4">Use the links on the left to manage movies, shows, and bookings.</p>
 
-      <!-- Dashboard Stats -->
       <div class="row g-4">
         <div class="col-md-4">
           <div class="card text-center p-4">
@@ -106,6 +103,211 @@
        if (!confirm("Are you sure you want to logout?")) return;
     localStorage.removeItem('access_token');
     window.location.href = '/login';
+    }
+  </script>
+</body>
+</html> -->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard | CineVerse</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: #f4f4f9;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 250px;
+      height: 100vh;
+      background: #121212;
+      position: fixed;
+      top: 0;
+      left: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 2px 0 15px rgba(0,0,0,0.25);
+      padding: 25px 0;
+      transition: all 0.3s ease;
+    }
+
+    .sidebar h3 {
+      color: #ff3d00;
+      text-align: center;
+      font-weight: 700;
+      margin-bottom: 2rem;
+      letter-spacing: 1px;
+    }
+
+    .sidebar a {
+      color: #c7c7c7;
+      display: block;
+      padding: 12px 25px;
+      text-decoration: none;
+      font-weight: 500;
+      border-left: 4px solid transparent;
+      transition: all 0.25s ease;
+    }
+
+    .sidebar a:hover,
+    .sidebar a.active {
+      background: #1f1f1f;
+      color: #fff;
+      border-left: 4px solid #ff3d00;
+    }
+
+    .sidebar hr {
+      border-color: #2c2c2c;
+      margin: 1.5rem 0;
+    }
+
+    .sidebar button {
+      margin: 0 20px 10px;
+      font-weight: 500;
+    }
+
+    /* Content Area */
+    .content {
+      margin-left: 250px;
+      padding: 3rem 2rem;
+      min-height: 100vh;
+    }
+
+    .dashboard-header {
+      font-weight: 700;
+      color: #222;
+      margin-bottom: 0.5rem;
+    }
+
+    .text-muted {
+      color: #666 !important;
+    }
+
+    /* Stat Cards */
+    .card {
+      border: none;
+      border-radius: 15px;
+      background: #fff;
+      box-shadow: 0 3px 15px rgba(0, 0, 0, 0.08);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .card h5 {
+      color: #555;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+    }
+
+    .card h3 {
+      font-weight: 700;
+    }
+
+    /* Colors for card text */
+    .text-primary { color: #007bff !important; }
+    .text-success { color: #28a745 !important; }
+    .text-danger { color: #dc3545 !important; }
+
+    /* Responsive Fix */
+    @media (max-width: 992px) {
+      .sidebar {
+        width: 200px;
+      }
+      .content {
+        margin-left: 200px;
+        padding: 2rem 1rem;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        position: relative;
+        height: auto;
+        width: 100%;
+      }
+      .content {
+        margin-left: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="d-flex">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div>
+        <h3>CineVerse</h3>
+        <a href="/admin/dashboard" id="link-dashboard" class="active">Dashboard</a>
+        <a href="/admin/movies" id="link-movies">Manage Movies</a>
+        <a href="/admin/shows" id="link-shows">Manage Shows</a>
+        <a href="/admin/bookings" id="link-bookings">Bookings</a>
+        <a href="/admin/users" id="link-users">Users</a>
+      </div>
+      <div>
+        <hr>
+        <button class="btn btn-outline-light w-75 d-block mx-auto mb-3" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content flex-grow-1">
+      <h2 class="dashboard-header">Welcome, Admin 👋</h2>
+      <p class="text-muted mb-4">Manage all aspects of CineVerse from here — movies, shows, users, and bookings.</p>
+
+      <!-- Dashboard Stats -->
+      <div class="row g-4">
+        <div class="col-md-4">
+          <div class="card text-center p-4">
+            <h5>Total Users</h5>
+            <h3 class="fw-bold text-primary">{{.TotalUsers}}</h3>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card text-center p-4">
+            <h5>Total Movies</h5>
+            <h3 class="fw-bold text-success">{{.TotalMovies}}</h3>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card text-center p-4">
+            <h5>Total Bookings</h5>
+            <h3 class="fw-bold text-danger">{{.TotalBookings}}</h3>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="mt-5">
+        <h4 class="fw-semibold mb-2">Recent Activity</h4>
+        <div class="p-4 bg-white rounded shadow-sm">
+          <p class="text-muted mb-0">Coming soon: charts and recent booking logs.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      alert('Unauthorized! Please login as admin.');
+      window.location.href = '/login';
+    }
+
+    function logout() {
+      if (!confirm("Are you sure you want to logout?")) return;
+      localStorage.removeItem('access_token');
+      window.location.href = '/login';
     }
   </script>
 </body>

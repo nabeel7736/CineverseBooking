@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -108,7 +108,7 @@
       <hr class="my-5">
       <h2>Existing Shows</h2>
       <div class="row" id="showsContainer">
-        <!-- Shows list will be loaded here -->
+
       </div>
     </div>
   </div>
@@ -217,4 +217,392 @@
 
 </body>
 
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Shows | CineVerse Admin</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: #f4f4f9;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 250px;
+      height: 100vh;
+      background: #121212;
+      position: fixed;
+      top: 0;
+      left: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 2px 0 15px rgba(0,0,0,0.25);
+      padding: 25px 0;
+    }
+
+    .sidebar h3 {
+      color: #ff3d00;
+      text-align: center;
+      font-weight: 700;
+      margin-bottom: 2rem;
+      letter-spacing: 1px;
+    }
+
+    .sidebar a {
+      color: #c7c7c7;
+      display: block;
+      padding: 12px 25px;
+      text-decoration: none;
+      font-weight: 500;
+      border-left: 4px solid transparent;
+      transition: all 0.25s ease;
+    }
+
+    .sidebar a:hover,
+    .sidebar a.active {
+      background: #1f1f1f;
+      color: #fff;
+      border-left: 4px solid #ff3d00;
+    }
+
+    .sidebar hr {
+      border-color: #2c2c2c;
+      margin: 1.5rem 0;
+    }
+
+    .sidebar button {
+      margin: 0 20px 10px;
+      font-weight: 500;
+    }
+
+    /* Content Area */
+    .content {
+      margin-left: 250px;
+      padding: 3rem 2rem;
+      min-height: 100vh;
+    }
+
+    h2 {
+      font-weight: 700;
+      color: #222;
+      margin-bottom: 1.5rem;
+    }
+
+    .card {
+      border: none;
+      border-radius: 15px;
+      background: #fff;
+      box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    }
+
+    .btn-primary {
+      background: #ff3d00;
+      border: none;
+    }
+
+    .btn-primary:hover {
+      background: #e33500;
+    }
+
+    .form-control:focus {
+      border-color: #ff3d00;
+      box-shadow: 0 0 6px rgba(255, 61, 0, 0.4);
+    }
+
+    /* Responsive */
+    @media (max-width: 992px) {
+      .sidebar {
+        width: 200px;
+      }
+      .content {
+        margin-left: 200px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        position: relative;
+        width: 100%;
+        height: auto;
+      }
+      .content {
+        margin-left: 0;
+        padding: 2rem 1rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="d-flex">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div>
+        <h3>CineVerse Admin</h3>
+        <a href="/admin/dashboard">Dashboard</a>
+        <a href="/admin/movies">Manage Movies</a>
+        <a href="/admin/shows" class="active">Manage Shows</a>
+        <a href="/admin/bookings">Bookings</a>
+        <a href="/admin/users">Users</a>
+      </div>
+      <div>
+        <hr>
+        <button class="btn btn-outline-light w-75 d-block mx-auto mb-3" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="content flex-grow-1">
+      <!-- Add Show Section -->
+      <div class="card p-4 mb-5">
+        <h2>Add New Show</h2>
+        <form id="showForm">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="movie_id" class="form-label fw-semibold">Select Movie</label>
+              <select id="movie_id" class="form-control" required></select>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="hall" class="form-label fw-semibold">Hall Name</label>
+              <input type="text" id="hall" class="form-control" placeholder="Hall 1" required>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="date" class="form-label fw-semibold">Date</label>
+              <input type="date" id="date" class="form-control" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="time" class="form-label fw-semibold">Time</label>
+              <input type="time" id="time" class="form-control" required>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="price" class="form-label fw-semibold">Ticket Price</label>
+              <input type="number" id="price" class="form-control" placeholder="120" step="0.01" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="available_seats" class="form-label fw-semibold">Available Seats</label>
+              <input type="number" id="available_seats" class="form-control" placeholder="100" required>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100">Add Show</button>
+        </form>
+      </div>
+
+      <!-- Existing Shows -->
+      <h2>Existing Shows</h2>
+      <div class="row" id="showsContainer"></div>
+    </div>
+  </div>
+
+  <!-- Edit Show Modal -->
+  <div class="modal fade" id="editShowModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content rounded-3">
+        <div class="modal-header bg-light">
+          <h5 class="modal-title">Edit Show</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="editShowForm">
+            <input type="hidden" id="edit_id">
+            <div class="mb-3">
+              <label for="edit_hall" class="form-label fw-semibold">Hall</label>
+              <input type="text" id="edit_hall" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label for="edit_date" class="form-label fw-semibold">Date</label>
+              <input type="date" id="edit_date" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label for="edit_time" class="form-label fw-semibold">Time</label>
+              <input type="time" id="edit_time" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label for="edit_price" class="form-label fw-semibold">Ticket Price</label>
+              <input type="number" id="edit_price" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label for="edit_seats" class="form-label fw-semibold">Available Seats</label>
+              <input type="number" id="edit_seats" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Update Show</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      alert('Unauthorized! Please login as admin.');
+      window.location.href = '/login';
+    }
+
+    async function loadMoviesDropdown() {
+      const res = await fetch('/api/admin/movies', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      const select = document.getElementById('movie_id');
+      select.innerHTML = '';
+      if (res.ok && data.movies) {
+        data.movies.forEach(m => {
+          const option = document.createElement('option');
+          option.value = m.ID;
+          option.textContent = m.title;
+          select.appendChild(option);
+        });
+      } else {
+        select.innerHTML = `<option disabled>No Movies Found</option>`;
+      }
+    }
+
+    async function loadShows() {
+      const res = await fetch('/api/admin/shows', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      const container = document.getElementById('showsContainer');
+      container.innerHTML = '';
+      if (res.ok && data.shows) {
+        data.shows.forEach(s => {
+          const formattedDate = new Date(s.start_time).toLocaleString('en-IN', {
+            dateStyle: 'medium',
+            timeStyle: 'short'
+          });
+          const col = document.createElement('div');
+          col.className = 'col-md-4 mb-4';
+          col.innerHTML = `
+            <div class="card p-3">
+              <h5>${s.movie_title || 'Unknown Movie'}</h5>
+              <p><strong>Hall:</strong> ${s.hall}</p>
+              <p><strong>Time:</strong> ${formattedDate}</p>
+              <p><strong>Seats:</strong> ${s.seats_total}</p>
+              <p><strong>Price:</strong> ₹${s.price}</p>
+              <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-primary flex-grow-1" onclick="openEditModal(${s.id}, '${s.hall}', '${s.start_time}', ${s.price}, ${s.seats_total})">Edit</button>
+                <button class="btn btn-sm btn-danger flex-grow-1" onclick="deleteShow(${s.id})">Delete</button>
+              </div>
+            </div>`;
+          container.appendChild(col);
+        });
+      } else {
+        container.innerHTML = `<p class="text-muted">No Shows available</p>`;
+      }
+    }
+
+    async function deleteShow(id) {
+      if (confirm('Are you sure to delete this show?')) {
+        const res = await fetch(`/api/admin/shows/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          alert('Deleted successfully');
+          loadShows();
+        } else {
+          alert('Failed to delete show');
+        }
+      }
+    }
+
+    document.getElementById('showForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const date = document.getElementById('date').value;
+      const time = document.getElementById('time').value;
+      const datetime = `${date}T${time}`;
+      const res = await fetch('/api/admin/shows', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          movie_id: parseInt(document.getElementById('movie_id').value),
+          hall: document.getElementById('hall').value,
+          start_time: datetime,
+          seats_total: parseInt(document.getElementById('available_seats').value),
+          price: parseFloat(document.getElementById('price').value)
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert('Show added successfully');
+        document.getElementById('showForm').reset();
+        loadShows();
+      } else {
+        alert(data.error || 'Failed to add show');
+      }
+    });
+
+    function openEditModal(id, hall, start_time, price, seats) {
+      const modal = new bootstrap.Modal(document.getElementById('editShowModal'));
+      const dt = new Date(start_time);
+      document.getElementById('edit_id').value = id;
+      document.getElementById('edit_hall').value = hall;
+      document.getElementById('edit_date').value = dt.toISOString().split('T')[0];
+      document.getElementById('edit_time').value = dt.toISOString().split('T')[1].slice(0, 5);
+      document.getElementById('edit_price').value = price;
+      document.getElementById('edit_seats').value = seats;
+      modal.show();
+    }
+
+    document.getElementById('editShowForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('edit_id').value;
+      const datetime = `${document.getElementById('edit_date').value}T${document.getElementById('edit_time').value}`;
+      const res = await fetch(`/api/admin/shows/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          hall: document.getElementById('edit_hall').value,
+          start_time: datetime,
+          seats_total: parseInt(document.getElementById('edit_seats').value),
+          price: parseFloat(document.getElementById('edit_price').value)
+        })
+      });
+      if (res.ok) {
+        alert('Show updated successfully');
+        loadShows();
+        bootstrap.Modal.getInstance(document.getElementById('editShowModal')).hide();
+      } else {
+        alert('Failed to update show');
+      }
+    });
+
+    function logout() {
+      if (!confirm("Are you sure you want to logout?")) return;
+      localStorage.removeItem('access_token');
+      window.location.href = '/login';
+    }
+
+    loadMoviesDropdown();
+    loadShows();
+  </script>
+</body>
 </html>

@@ -60,8 +60,13 @@ func GetAllBookings(db *gorm.DB) gin.HandlerFunc {
 		var bookings []models.Booking
 
 		search := c.Query("search")
+		status := c.Query("status")
 
-		query := db.Preload("User").Preload("Show").Preload("Seats").Preload("Payment")
+		query := db.Preload("User").Preload("Show").Preload("Seats").Preload("Payment").Order("created_at desc")
+
+		if status != "" {
+			query = query.Where("status = ?", status)
+		}
 
 		if search != "" {
 			query = query.Joins("JOIN users ON users.id = bookings.user_id").
@@ -82,17 +87,17 @@ func UpdateBookingStatus(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		id := c.Param("id")
-		var booking models.Booking
-		if err := db.First(&booking, id).Error; err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Booking not found"})
-			return
-		}
 
 		var body struct {
 			Status string `json:"status"`
 		}
-		if err := c.ShouldBindJSON(&body); err != nil {
+		if err := c.ShouldBindJSON(&body); err != nil || body.Status == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+			return
+		}
+		var booking models.Booking
+		if err := db.First(&booking, id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Booking not found"})
 			return
 		}
 
@@ -102,7 +107,7 @@ func UpdateBookingStatus(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "Booking status updated successfully"})
+		c.JSON(http.StatusOK, gin.H{"message": "Booking status updated successfully", "booking": booking})
 	}
 }
 
@@ -118,6 +123,30 @@ func DeleteBooking(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"message": "Booking deleted successfully"})
+	}
+}
+
+func GetBookingDetails(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+
+		var booking models.Booking
+
+		// Fetch booking with all related data
+		if err := db.Preload("User").
+			Preload("Show").
+			Preload("Show.Theatre").
+			Preload("Show.Movie").
+			Preload("Seats").
+			Preload("Payment").
+			First(&booking, id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Booking not found"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"booking": booking,
+		})
 	}
 }
 

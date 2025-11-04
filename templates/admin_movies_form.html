@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -144,6 +144,297 @@
         alert(data.error || 'Failed to add movie');
       }
     });
+
+    loadMovies();
+  </script>
+</body>
+</html> -->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Movies | CineVerse Admin</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: #f4f4f9;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 250px;
+      height: 100vh;
+      background: #121212;
+      position: fixed;
+      top: 0;
+      left: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 2px 0 15px rgba(0, 0, 0, 0.25);
+      padding: 25px 0;
+    }
+
+    .sidebar h3 {
+      color: #ff3d00;
+      text-align: center;
+      font-weight: 700;
+      margin-bottom: 2rem;
+      letter-spacing: 1px;
+    }
+
+    .sidebar a {
+      color: #c7c7c7;
+      display: block;
+      padding: 12px 25px;
+      text-decoration: none;
+      font-weight: 500;
+      border-left: 4px solid transparent;
+      transition: all 0.25s ease;
+    }
+
+    .sidebar a:hover,
+    .sidebar a.active {
+      background: #1f1f1f;
+      color: #fff;
+      border-left: 4px solid #ff3d00;
+    }
+
+    .sidebar hr {
+      border-color: #2c2c2c;
+      margin: 1.5rem 0;
+    }
+
+    .sidebar button {
+      margin: 0 20px 10px;
+      font-weight: 500;
+    }
+
+    /* Main Content */
+    .content {
+      margin-left: 250px;
+      padding: 3rem 2rem;
+      min-height: 100vh;
+    }
+
+    h2 {
+      font-weight: 700;
+      color: #222;
+      margin-bottom: 1.5rem;
+    }
+
+    .card {
+      border: none;
+      border-radius: 15px;
+      background: #fff;
+      box-shadow: 0 3px 15px rgba(0, 0, 0, 0.08);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-primary {
+      background: #ff3d00;
+      border: none;
+      transition: background 0.2s ease;
+    }
+
+    .btn-primary:hover {
+      background: #e23300;
+    }
+
+    .btn-danger {
+      border: none;
+      background: #dc3545;
+    }
+
+    .btn-danger:hover {
+      background: #bb2d3b;
+    }
+
+    .form-control:focus {
+      border-color: #ff3d00;
+      box-shadow: 0 0 5px rgba(255, 61, 0, 0.4);
+    }
+
+    .movie-card img {
+      border-radius: 10px;
+      height: 320px;
+      object-fit: cover;
+      width: 100%;
+    }
+
+    @media (max-width: 992px) {
+      .sidebar {
+        width: 200px;
+      }
+      .content {
+        margin-left: 200px;
+        padding: 2rem 1rem;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        position: relative;
+        height: auto;
+        width: 100%;
+      }
+      .content {
+        margin-left: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="d-flex">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div>
+        <h3>CineVerse Admin</h3>
+        <a href="/admin/dashboard">Dashboard</a>
+        <a href="/admin/movies" class="active">Manage Movies</a>
+        <a href="/admin/shows">Manage Shows</a>
+        <a href="/admin/bookings">Bookings</a>
+        <a href="/admin/users">Users</a>
+      </div>
+      <div>
+        <hr>
+        <button class="btn btn-outline-light w-75 d-block mx-auto mb-3" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="content flex-grow-1">
+      <div class="card p-4 mb-5">
+        <h2>Add New Movie 🎬</h2>
+        <form id="movieForm">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="title" class="form-label">Movie Title</label>
+              <input type="text" id="title" class="form-control" placeholder="Enter movie title" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="duration" class="form-label">Duration (minutes)</label>
+              <input type="number" id="duration" class="form-control" placeholder="120" required>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="poster_url" class="form-label">Poster URL</label>
+            <input type="url" id="poster_url" class="form-control" placeholder="Enter poster image URL">
+          </div>
+
+          <div class="mb-3">
+            <label for="description" class="form-label">Description</label>
+            <textarea id="description" class="form-control" rows="3" placeholder="Enter movie description"></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100">Add Movie</button>
+        </form>
+      </div>
+
+      <h2 class="mb-4">🎥 Existing Movies</h2>
+      <div class="row" id="moviesContainer"></div>
+    </div>
+  </div>
+
+  <script>
+    async function loadMovies() {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        alert("Session expired. Please login again.");
+        return (window.location.href = "/login");
+      }
+
+      const res = await fetch('/api/admin/movies', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const data = await res.json();
+      const container = document.getElementById('moviesContainer');
+      container.innerHTML = '';
+
+      if (res.ok) {
+        data.movies.forEach(m => {
+          const col = document.createElement('div');
+          col.className = 'col-md-4 mb-4';
+          col.innerHTML = `
+            <div class="card movie-card p-3">
+              <img src="${m.posterUrl || 'https://via.placeholder.com/400x300'}" alt="${m.title}">
+              <div class="mt-3">
+                <h5 class="fw-bold">${m.title}</h5>
+                <p class="text-muted small">${m.description ? m.description.substring(0, 80) + '...' : ''}</p>
+                <p><strong>Duration:</strong> ${m.duration_min} min</p>
+                <button class="btn btn-danger w-100 mt-2" onclick="deleteMovie(${m.ID})">Delete</button>
+              </div>
+            </div>
+          `;
+          container.appendChild(col);
+        });
+      } else {
+        alert(data.error || "Failed to load movies");
+      }
+    }
+
+    async function deleteMovie(ID) {
+      const token = localStorage.getItem("access_token");
+      if (!confirm("Delete this movie?")) return;
+
+      const res = await fetch(`/api/admin/movies/${ID}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.ok) {
+        alert("Movie deleted");
+        loadMovies();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to delete movie");
+      }
+    }
+
+    document.getElementById('movieForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const token = localStorage.getItem('access_token');
+
+      const res = await fetch('/api/admin/movies', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: document.getElementById('title').value,
+          description: document.getElementById('description').value,
+          posterUrl: document.getElementById('poster_url').value,
+          duration_min: document.getElementById('duration').value
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        alert('Movie added successfully');
+        document.getElementById('movieForm').reset();
+        loadMovies();
+      } else {
+        alert(data.error || 'Failed to add movie');
+      }
+    });
+
+    function logout() {
+      if (!confirm("Are you sure you want to logout?")) return;
+      localStorage.removeItem('access_token');
+      window.location.href = '/login';
+    }
 
     loadMovies();
   </script>

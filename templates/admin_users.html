@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -34,7 +34,7 @@
 </head>
 <body>
   <div class="d-flex">
-    <!-- Sidebar -->
+   
     <div class="sidebar">
       <h3>CineVerse Admin</h3>
       <a href="/admin/dashboard">Dashboard</a>
@@ -43,10 +43,8 @@
       <a href="/admin/bookings">Bookings</a>
       <a href="/admin/users" style="text-decoration: underline;">Manage Users</a>
       <hr />
-      <!-- <button class="btn btn-light w-100" onclick="logout()">Logout</button> -->
     </div>
 
-    <!-- Content -->
     <div class="content">
       <div class="card">
         <h2 class="text-center mb-4">Manage Users</h2>
@@ -149,12 +147,286 @@
       fetchUsers();
     }
 
-    // function logout() {
-    //   localStorage.removeItem('access_token');
-    //   window.location.href = '/login';
-    // }
+   
+
+    fetchUsers();
+  </script>
+</body>
+</html> -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manage Users | CineVerse Admin</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body {
+      background: #f4f4f9;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 250px;
+      height: 100vh;
+      background: #121212;
+      position: fixed;
+      top: 0;
+      left: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: 2px 0 15px rgba(0,0,0,0.25);
+      padding: 25px 0;
+      transition: all 0.3s ease;
+    }
+
+    .sidebar h3 {
+      color: #ff3d00;
+      text-align: center;
+      font-weight: 700;
+      margin-bottom: 2rem;
+      letter-spacing: 1px;
+    }
+
+    .sidebar a {
+      color: #c7c7c7;
+      display: block;
+      padding: 12px 25px;
+      text-decoration: none;
+      font-weight: 500;
+      border-left: 4px solid transparent;
+      transition: all 0.25s ease;
+    }
+
+    .sidebar a:hover,
+    .sidebar a.active {
+      background: #1f1f1f;
+      color: #fff;
+      border-left: 4px solid #ff3d00;
+    }
+
+    .sidebar hr {
+      border-color: #2c2c2c;
+      margin: 1.5rem 0;
+    }
+
+    .sidebar button {
+      margin: 0 20px 10px;
+      font-weight: 500;
+    }
+
+    /* Content */
+    .content {
+      margin-left: 250px;
+      padding: 3rem 2rem;
+      min-height: 100vh;
+    }
+
+    h2 {
+      font-weight: 700;
+      color: #222;
+      margin-bottom: 1.5rem;
+    }
+
+    .card {
+      border: none;
+      border-radius: 15px;
+      background: #fff;
+      box-shadow: 0 3px 15px rgba(0, 0, 0, 0.08);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      padding: 2rem;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+    }
+
+    .form-control:focus {
+      border-color: #ff3d00;
+      box-shadow: 0 0 5px rgba(255, 61, 0, 0.4);
+    }
+
+    .btn-primary {
+      background: #ff3d00;
+      border: none;
+    }
+
+    .btn-primary:hover {
+      background: #e03500;
+    }
+
+    .table th {
+      background-color: #1a1a1a !important;
+      color: #fff !important;
+      text-align: center;
+    }
+
+    .table td {
+      text-align: center;
+      vertical-align: middle !important;
+    }
+
+    .badge {
+      font-size: 0.85rem;
+      padding: 0.45rem 0.75rem;
+    }
+
+    @media (max-width: 992px) {
+      .sidebar {
+        width: 200px;
+      }
+      .content {
+        margin-left: 200px;
+        padding: 2rem 1rem;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        position: relative;
+        width: 100%;
+        height: auto;
+      }
+      .content {
+        margin-left: 0;
+        padding: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="d-flex">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div>
+        <h3>CineVerse Admin</h3>
+        <a href="/admin/dashboard">Dashboard</a>
+        <a href="/admin/movies">Manage Movies</a>
+        <a href="/admin/shows">Manage Shows</a>
+        <a href="/admin/bookings">Bookings</a>
+        <a href="/admin/users" class="active">Manage Users</a>
+      </div>
+      <div>
+        <hr>
+        <button class="btn btn-outline-light w-75 d-block mx-auto mb-3" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content flex-grow-1">
+      <div class="card">
+        <h2 class="text-center mb-4">Manage Users</h2>
+
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+          <input type="text" id="searchInput" class="form-control w-auto flex-grow-1 me-2" placeholder="🔍 Search user..." style="max-width: 280px;" />
+          <button class="btn btn-primary" onclick="fetchUsers()">Refresh</button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover align-middle">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Bookings</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="userTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = '/api/admin/users';
+
+    async function fetchUsers() {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        alert('Session expired. Please login again.');
+        return (window.location.href = '/login');
+      }
+
+      const search = document.getElementById('searchInput').value || '';
+      const res = await fetch(`${API}?search=${search}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      const data = await res.json();
+
+      if (res.ok) renderUsers(data.users || []);
+      else alert(data.error || 'Failed to fetch users');
+    }
+
+    function renderUsers(users) {
+      const body = document.getElementById('userTableBody');
+      body.innerHTML = '';
+
+      if (!users.length) {
+        body.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">No users found</td></tr>`;
+        return;
+      }
+
+      users.forEach((u) => {
+        const status = u.blocked ? 'Blocked' : 'Active';
+        body.innerHTML += `
+          <tr>
+            <td>${u.id}</td>
+            <td>${u.full_name}</td>
+            <td>${u.email}</td>
+            <td>${u.role}</td>
+            <td>${u.bookings_count || 0}</td>
+            <td><span class="badge ${u.blocked ? 'bg-danger' : 'bg-success'}">${status}</span></td>
+            <td>
+              <button class="btn btn-sm btn-warning me-2" onclick="toggleBlock(${u.id})">
+                ${u.blocked ? 'Unblock' : 'Block'}
+              </button>
+              <button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})">Delete</button>
+            </td>
+          </tr>`;
+      });
+    }
+
+    async function toggleBlock(id) {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`${API}/${id}/block`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      const data = await res.json();
+      alert(data.message || 'Status updated');
+      fetchUsers();
+    }
+
+    async function deleteUser(id) {
+      const token = localStorage.getItem('access_token');
+      if (!confirm('Are you sure you want to delete this user?')) return;
+
+      const res = await fetch(`${API}/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      const data = await res.json();
+      alert(data.message || 'User deleted');
+      fetchUsers();
+    }
+
+    function logout() {
+      if (!confirm("Are you sure you want to logout?")) return;
+      localStorage.removeItem('access_token');
+      window.location.href = '/login';
+    }
 
     fetchUsers();
   </script>
 </body>
 </html>
+
