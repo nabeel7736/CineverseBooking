@@ -4,97 +4,193 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login | CineVerse</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+
+  <title>Admin Login | CineVerse</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body {
-      background: linear-gradient(135deg, #667eea, #764ba2);
+      background: radial-gradient(circle at top left, #1f1f1f, #0d0d0d);
+      color: #fff;
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
+
     .login-card {
-      background: white;
-      padding: 2rem;
-      border-radius: 15px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.2);
+      background: #121212;
+      padding: 2.5rem;
+      border-radius: 18px;
       width: 100%;
       max-width: 400px;
+      box-shadow: 0 0 25px rgba(0,0,0,0.4);
+      border: 1px solid #2a2a2a;
+      transition: all 0.3s ease;
     }
+
+    .login-card:hover {
+      box-shadow: 0 0 35px rgba(255, 61, 0, 0.2);
+      transform: translateY(-2px);
+    }
+
     .login-card h2 {
       font-weight: 700;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.8rem;
       text-align: center;
-      color: #333;
+      color: #ff3d00;
+      letter-spacing: 0.5px;
     }
-    .btn-primary {
-      background: #764ba2;
-      border: none;
+
+    label {
+      font-weight: 500;
+      color: #ccc;
     }
-    .btn-primary:hover {
-      background: #667eea;
+
+    .form-control {
+      background: #1e1e1e;
+      border: 1px solid #333;
+      color: #fff;
+      border-radius: 10px;
+      padding: 10px 14px;
     }
+
     .form-control:focus {
-      border-color: #764ba2;
-      box-shadow: 0 0 5px rgba(118,75,162,0.5);
+      border-color: #ff3d00;
+      box-shadow: 0 0 6px rgba(255, 61, 0, 0.4);
+      background: #1a1a1a;
     }
-    .register-link {
+
+    .btn-primary {
+      background: #ff3d00;
+      border: none;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      padding: 10px;
+      border-radius: 10px;
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+      background: #ff5722;
+      transform: translateY(-1px);
+    }
+
+    .error-text {
+      color: #ff4d4d;
+      font-size: 0.9rem;
       text-align: center;
-      margin-top: 1rem;
+      margin-top: 0.7rem;
+      display: none;
+    }
+
+    .footer-text {
+      margin-top: 1.5rem;
+      text-align: center;
+      color: #888;
+      font-size: 0.85rem;
+    }
+
+    .footer-text span {
+      color: #ff3d00;
+      font-weight: 600;
     }
   </style>
 </head>
 <body>
   <div class="login-card">
-    <h2>Login to CineVerse</h2>
-    <form id="loginForm">
+    <h2>CineVerse Admin</h2>
+    <form id="adminLoginForm">
       <div class="mb-3">
-        <label for="email" class="form-label">Email</label>
-        <input type="email" id="email" class="form-control" placeholder="Enter your email" required>
+        <label for="email" class="form-label">Admin Email</label>
+        <input type="email" id="email" class="form-control" placeholder="Enter admin email" required>
       </div>
-      <div class="mb-3">
+      <div class="mb-4">
         <label for="password" class="form-label">Password</label>
-        <input type="password" id="password" class="form-control" placeholder="Enter your password" required>
+        <input type="password" id="password" class="form-control" placeholder="Enter password" required>
       </div>
       <button type="submit" class="btn btn-primary w-100">Login</button>
-      <div class="register-link">
-        <small>Don't have an account? <a href="/register">Register here</a></small>
-      </div>
+      <div class="error-text" id="errorText">Invalid credentials</div>
     </form>
+
+    <p class="footer-text mt-4">© <span>CineVerse</span> Admin Portal</p>
   </div>
 
   <script>
-   document.getElementById('loginForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
+document.addEventListener("DOMContentLoaded", async () => {
+  const token = localStorage.getItem("access_token");
 
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
+  if (token) {
+    try {
+      // Verify the token by calling backend
+      const res = await fetch("/api/admin/verify", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
-  try {
-    const res = await fetch('/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
+      const data = await res.json();
 
-    const data = await res.json();
-    console.log(data);
-
-    if (res.ok && data.access_token) {
-      localStorage.setItem('access_token', data.access_token);
-      alert('Login successful');
-      window.location.href = '/admin/dashboard';
-    } else {
-      alert(data.error || 'Invalid Email or Password');
+      // ✅ If already logged in, redirect to dashboard
+      if (res.ok && data.role === "admin") {
+        window.location.replace("/admin/dashboard");
+        return;
+      }
+    } catch (e) {
+      console.log("Token invalid or expired, stay on login page.");
     }
-
-  } catch (err) {
-    console.error('Network error:', err);
-    alert('Server not responding or invalid response');
+  } else {
+    // No token found — clear any cache remnants
+    localStorage.removeItem("access_token");
   }
 });
 
+document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const errorText = document.getElementById('errorText');
+
+      errorText.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.access_token) {
+          localStorage.setItem('access_token', data.access_token);
+          const box = document.createElement("div");
+  box.innerText = "Welcome, Admin!";
+  box.style.position = "fixed";
+  box.style.top = "20px";
+  box.style.right = "20px";
+  box.style.background = "#ff3d00";
+  box.style.padding = "12px 18px";
+  box.style.borderRadius = "8px";
+  box.style.color = "#fff";
+  box.style.fontWeight = "600";
+  box.style.zIndex = "9999";
+  document.body.appendChild(box);
+
+  setTimeout(() => {
+    window.location.replace("/admin/dashboard");
+  }, 500);
+        } else {
+          errorText.textContent = data.error || 'Invalid email or password';
+          errorText.style.display = 'block';
+        }
+      } catch (err) {
+        console.error('Login error:', err);
+        errorText.textContent = 'Server error. Please try again later.';
+        errorText.style.display = 'block';
+      }
+    });
   </script>
 </body>
 </html>

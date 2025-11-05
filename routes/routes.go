@@ -19,13 +19,15 @@ func SetupRouter() *gin.Engine {
 	api := r.Group("/api")
 	{
 		// Auth routes
-		api.POST("/signup", controllers.SignupHandler)
-		api.POST("/login", controllers.LoginHandler)
+		api.POST("/user/signup", controllers.UserSignupHandler)
+		api.POST("/user/login", controllers.UserLoginHandler)
+		api.POST("/admin/signup", controllers.AdminRegister)
+		api.POST("/admin/login", controllers.AdminLogin)
 		api.POST("/forgot-password", controllers.ForgotPasswordHandler)
 		api.POST("/reset-password", controllers.ResetPasswordHandler)
 
 		// New refresh token endpoints
-		api.POST("/refresh", controllers.RefreshTokenHandler)
+		// api.POST("/refresh", controllers.RefreshTokenHandler)
 		api.POST("/logout", controllers.LogoutHandler)
 
 		// Public movie routes
@@ -36,33 +38,60 @@ func SetupRouter() *gin.Engine {
 
 	// Protected User Routes (Require Login)
 
-	user := r.Group("/api/user").Use(middlewares.AuthMiddleware(), middlewares.UserOnly())
+	user := r.Group("/api/user").Use(middlewares.AuthMiddleware(), middlewares.UserMiddleware())
 	{
-		user.POST("/book", controllers.BookTickets(config.DB))
-		user.GET("/mybookings", controllers.GetUserBookings(config.DB))
-		api.GET("/shows/:showId/seats", controllers.GetAvailableSeats(config.DB))
-		// api.POST("/bookings", controllers.CreateBooking(config.DB))
+		user.GET("/movies", controllers.GetAllMovies(config.DB))
+		user.GET("/movies/:id", controllers.GetMovieWithShows(config.DB))
+		user.GET("/movies/shows/upcoming", controllers.GetUpcomingShows(config.DB))
+
+		user.POST("/bookings", controllers.CreateBooking(config.DB))
+		user.GET("/bookings/:id", controllers.GetBookingDetailsUser(config.DB))
+		user.GET("/bookings/user", controllers.GetUserBookings(config.DB))
+		user.GET("/shows/:id/seats", controllers.GetShowSeats(config.DB))
+
+		user.GET("/wishlist", controllers.GetWishlist(config.DB))
+		user.POST("/wishlist", controllers.AddToWishlist(config.DB))
+		user.DELETE("/wishlist/:id", controllers.RemoveFromWishlist(config.DB))
+
+		user.POST("/payments/initiate", controllers.InitiatePayment(config.DB))
+		user.POST("/payments/mock/confirm/:id", controllers.MockConfirmPayment(config.DB))
+		user.GET("/payments/user", controllers.GetUserPayments(config.DB))
+
 	}
 
 	// Admin Routes (Require Admin Access)
 
 	admin := r.Group("/api/admin")
-	admin.Use(middlewares.AdminMiddleware())
+	admin.Use(middlewares.AdminMiddleware(), middlewares.AuthMiddleware())
 	{
-		admin.GET("/movies", controllers.AdminListMovies(config.DB))
-		admin.POST("/movies", controllers.AdminAddMovie(config.DB))
-		admin.DELETE("/movies/:id", controllers.AdminDeleteMovie(config.DB))
-		admin.GET("/shows", controllers.AdminListShows(config.DB))
-		admin.POST("/shows", controllers.AdminAddShow(config.DB))
-		admin.DELETE("/shows/:id", controllers.AdminDeleteShow(config.DB))
-		admin.GET("/bookings", controllers.GetAllBookings(config.DB))
-		admin.GET("/bookings/:id", controllers.GetBookingDetails(config.DB))
-		admin.PUT("/bookings/:id/status", controllers.UpdateBookingStatus(config.DB))
-		admin.DELETE("/bookings/:id", controllers.DeleteBooking(config.DB))
-		admin.GET("/dashboard", controllers.AdminDashboard(config.DB))
-		admin.GET("/users", controllers.GetAllUsers(config.DB))
-		admin.PUT("/users/:id/block", controllers.BlockUser(config.DB))
-		admin.DELETE("/users/:id", controllers.DeleteUser(config.DB))
+		db := config.DB
+		analyticsController := controllers.AnalyticsController{DB: db}
+
+		admin.GET("/verify", middlewares.AdminMiddleware(), controllers.AdminVerify(db))
+
+		admin.GET("/dashboard", controllers.AdminDashboard(db))
+		admin.GET("/analytics/stats", analyticsController.GetDashboardStats)
+		admin.GET("/analytics/daily-revenue", analyticsController.GetDailyRevenue)
+		admin.GET("/analytics/bookings-per-movie", analyticsController.GetBookingsPerMovie)
+		admin.GET("/analytics/user-activity", analyticsController.GetUserActivity)
+
+		admin.GET("/movies", controllers.AdminListMovies(db))
+		admin.POST("/movies", controllers.AdminAddMovie(db))
+		admin.DELETE("/movies/:id", controllers.AdminDeleteMovie(db))
+
+		admin.GET("/shows", controllers.AdminListShows(db))
+		admin.POST("/shows", controllers.AdminAddShow(db))
+		admin.PUT("/shows/:id", controllers.AdminEditShow(db))
+		admin.DELETE("/shows/:id", controllers.AdminDeleteShow(db))
+
+		admin.GET("/bookings", controllers.GetAllBookings(db))
+		admin.GET("/bookings/:id", controllers.GetBookingDetails(db))
+		admin.PUT("/bookings/:id/status", controllers.UpdateBookingStatus(db))
+		admin.DELETE("/bookings/:id", controllers.DeleteBooking(db))
+
+		admin.GET("/users", controllers.GetAllUsers(db))
+		admin.PUT("/users/:id/block", controllers.BlockUser(db))
+		admin.DELETE("/users/:id", controllers.DeleteUser(db))
 	}
 
 	// Public HTML Pages
@@ -71,7 +100,10 @@ func SetupRouter() *gin.Engine {
 		c.HTML(200, "public_movies.html", gin.H{})
 	})
 
-	r.GET("/login", middlewares.PreventLoginWhenAuthenticated(), func(c *gin.Context) {
+	r.GET("/admin/login", middlewares.PreventLoginWhenAuthenticated(), func(c *gin.Context) {
+		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+		c.Header("Pragma", "no-cache")
+		c.Header("Expires", "0")
 		c.HTML(200, "login.html", gin.H{})
 	})
 

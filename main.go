@@ -32,6 +32,6 @@ func main() {
 }
 
 func migrate(db *gorm.DB) error {
-	return db.AutoMigrate(&models.User{}, &models.Movie{}, &models.Show{}, &models.Booking{}, &models.RefreshToken{},
-		&models.Theatre{}, &models.Hall{}, &models.Seat{}, &models.BookingSeat{}, &models.Payment{})
+	return db.AutoMigrate(&models.User{}, &models.Admin{}, &models.Movie{}, &models.Show{}, &models.Booking{}, &models.RefreshToken{},
+		&models.Theatre{}, &models.Hall{}, &models.BookingSeat{}, &models.Payment{}, &models.Wishlist{})
 }

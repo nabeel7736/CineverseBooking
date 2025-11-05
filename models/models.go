@@ -6,22 +6,35 @@ import (
 	"gorm.io/gorm"
 )
 
-type User struct {
-	ID           uint   `gorm:"primaryKey" json:"id"`
-	FullName     string `gorm:"not null" json:"full_name"`
-	Email        string `gorm:"uniqueIndex;not null" json:"email"`
-	Role         string `gorm:"type:varchar(50);default:user;not null" json:"role"`
-	Password     string `gorm:"not null" json:"-"` // stored as bcrypt hash
-	RefreshToken string `json:"refresh_token"`
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	Blocked      bool `json:"blocked" gorm:"default:false"`
-	// DeletedAt    gorm.DeletedAt `gorm:"index"`
-	Deleted       bool      `json:"deleted" gorm:"default:false"`
-	Bookings      []Booking `gorm:"foreignKey:UserID" json:"bookings,omitempty"`
-	BookingsCount int64     `json:"bookings_count" gorm:"-"`
+type Admin struct {
+	ID           uint           `gorm:"primaryKey" json:"id"`
+	FullName     string         `gorm:"not null" json:"full_name"`
+	Email        string         `gorm:"uniqueIndex;not null" json:"email"`
+	Password     string         `gorm:"not null" json:"-"` // bcrypt hash
+	Role         string         `gorm:"type:varchar(50);default:'admin'" json:"role"`
+	RefreshToken string         `json:"refresh_token"`
+	Blocked      bool           `gorm:"default:false" json:"blocked"`
+	Deleted      bool           `gorm:"default:false" json:"deleted"`
+	CreatedAt    time.Time      `json:"created_at"`
+	UpdatedAt    time.Time      `json:"updated_at"`
+	DeletedAt    gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 }
 
+type User struct {
+	ID            uint           `gorm:"primaryKey" json:"id"`
+	FullName      string         `gorm:"not null" json:"full_name"`
+	Email         string         `gorm:"uniqueIndex;not null" json:"email"`
+	Password      string         `gorm:"not null" json:"-"` // bcrypt hash
+	RefreshToken  string         `json:"refresh_token"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
+	Blocked       bool           `gorm:"default:false" json:"blocked"`
+	Deleted       bool           `gorm:"default:false" json:"deleted"`
+	Bookings      []Booking      `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	BookingsCount int64          `gorm:"-" json:"bookings_count,omitempty"`
+	Wishlist      []Wishlist     `gorm:"foreignKey:UserID;constraint:OnDelete:CASCADE"`
+	DeletedAt     gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
+}
 type Movie struct {
 	ID          uint       `gorm:"primaryKey"`
 	Title       string     `gorm:"not null" json:"title"`
@@ -50,20 +63,8 @@ type Hall struct {
 	Name       string    `gorm:"size:100;not null" json:"name"`
 	TotalSeats int       `json:"total_seats"`
 	LayoutJSON string    `gorm:"type:json" json:"layout_json,omitempty"` // optional: store seat layout meta
-	Seats      []Seat    `gorm:"foreignKey:HallID" json:"seats,omitempty"`
 	CreatedAt  time.Time `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt  time.Time `gorm:"autoUpdateTime" json:"updated_at"`
-}
-
-type Seat struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	HallID    uint      `gorm:"index;not null" json:"hall_id"`
-	Row       string    `gorm:"size:10" json:"row"`
-	Number    int       `json:"number"`
-	Code      string    `gorm:"size:20;index" json:"code"` // e.g., "A1"
-	Type      string    `gorm:"size:30" json:"type"`       // e.g., "regular","vip"
-	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 }
 
 type Show struct {
@@ -86,7 +87,6 @@ type Show struct {
 type Booking struct {
 	ID            uint `gorm:"primaryKey"`
 	UserID        uint `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"user_id"`
-	User          User
 	ShowID        uint `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"show_id"`
 	Show          Show
 	SeatsCount    int           `json:"seats_count"`
@@ -101,12 +101,11 @@ type Booking struct {
 
 type BookingSeat struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
-	BookingID uint      `gorm:"index;not null" json:"booking_id"`
-	SeatID    uint      `gorm:"index:idx_show_seat,unique;not null"`
-	ShowID    uint      `gorm:"index:idx_show_seat,unique;not null"`
-	SeatCode  string    `gorm:"size:20" json:"seat_code"`
-	Price     float64   `gorm:"type:decimal(10,2)" json:"price"`
-	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
+	BookingID uint      `gorm:"not null" json:"booking_id"`
+	ShowID    uint      `gorm:"not null" json:"show_id"`
+	SeatCode  string    `gorm:"size:10;not null" json:"seat_code"`
+	Price     float64   `json:"price"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type Payment struct {
@@ -117,4 +116,14 @@ type Payment struct {
 	Amount     float64   `gorm:"type:decimal(10,2)" json:"amount"`
 	Status     string    `gorm:"size:50;default:'completed'" json:"status"`
 	CreatedAt  time.Time `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt  time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+}
+
+type Wishlist struct {
+	ID        uint      `gorm:"primaryKey"`
+	UserID    uint      `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"user_id"`
+	User      User      `gorm:"foreignKey:UserID" json:"user"`
+	MovieID   uint      `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"movie_id"`
+	Movie     Movie     `gorm:"foreignKey:MovieID" json:"movie"`
+	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 }

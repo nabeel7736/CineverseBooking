@@ -178,6 +178,11 @@ func AdminDeleteMovie(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
+		if err := db.Where("movie_id = ?", id).Delete(&models.Show{}).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete related shows"})
+			return
+		}
+
 		if err := db.Unscoped().Delete(&movie, id).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -235,6 +240,7 @@ func AdminAddShow(db *gorm.DB) gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+
 		c.JSON(http.StatusCreated, gin.H{"show": show})
 	}
 }
@@ -280,6 +286,79 @@ func AdminDeleteShow(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"message": "show deleted"})
+	}
+}
+
+// Admin: Edit Show
+func AdminEditShow(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		idStr := c.Param("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid show id"})
+			return
+		}
+
+		var payload struct {
+			MovieID int     `json:"movie_id" form:"movie_id"`
+			Hall    string  `json:"hall" form:"hall"`
+			Start   string  `json:"start_time" form:"start_time"`
+			Seats   int     `json:"seats_total" form:"seats_total"`
+			Price   float64 `json:"price" form:"price"`
+		}
+		if err := c.ShouldBind(&payload); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		var show models.Show
+		if err := db.First(&show, id).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "show not found"})
+			return
+		}
+
+		// Optional: validate MovieID if changed
+		if payload.MovieID != 0 && payload.MovieID != int(show.MovieID) {
+			var movie models.Movie
+			if err := db.First(&movie, payload.MovieID).Error; err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid movie id"})
+				return
+			}
+			show.MovieID = payload.MovieID
+		}
+
+		// Parse and update start time if provided
+		if payload.Start != "" {
+			t, err := time.Parse(time.RFC3339, payload.Start)
+			if err != nil {
+				// fallback: handle "2006-01-02T15:04"
+				t, err = time.Parse("2006-01-02T15:04", payload.Start)
+				if err != nil {
+					c.JSON(http.StatusBadRequest, gin.H{"error": "invalid datetime format"})
+					return
+				}
+			}
+			show.StartTime = t
+		}
+
+		// Update fields if provided
+		if payload.Hall != "" {
+			show.Hall = payload.Hall
+		}
+		if payload.Seats != 0 {
+			show.SeatsTotal = payload.Seats
+		}
+		if payload.Price != 0 {
+			show.Price = payload.Price
+		}
+
+		// Save updates
+		if err := db.Save(&show).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "show updated successfully", "show": show})
 	}
 }
 

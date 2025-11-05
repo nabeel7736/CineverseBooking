@@ -59,20 +59,29 @@ func BlockUser(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-// DeleteUser - soft delete user
 func DeleteUser(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-
 		id := c.Param("id")
-		var user models.User
 
+		var user models.User
 		if err := db.First(&user, id).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 			return
 		}
 
-		user.Deleted = true
-		db.Save(&user)
-		c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
+		// Delete all bookings for this user (with cascade)
+		if err := db.Where("user_id = ?", id).Delete(&models.Booking{}).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user bookings"})
+			return
+		}
+
+		if err := db.Delete(&user).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete user"})
+			return
+		}
+
+		var users []models.User
+		db.Find(&users)
+		c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully", "users": users})
 	}
 }

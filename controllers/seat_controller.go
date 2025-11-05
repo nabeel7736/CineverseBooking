@@ -3,34 +3,69 @@ package controllers
 import (
 	"cineverse/models"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-// GetAvailableSeats returns seats with booking status for a show
-func GetAvailableSeats(db *gorm.DB) gin.HandlerFunc {
-	// db := c.MustGet("db").(*gorm.DB)
+func GetShowSeats(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-
-		showID := c.Param("showId")
-
-		var seats []models.Seat
-		err := db.Raw(`
-			SELECT s.*, 
-				   CASE WHEN bs.id IS NULL THEN false ELSE true END AS booked
-			FROM seats s
-			LEFT JOIN booking_seats bs 
-				ON bs.seat_id = s.id 
-				AND bs.show_id = ? 
-				AND bs.deleted_at IS NULL
-		`, showID).Scan(&seats).Error
-
+		showID, err := strconv.Atoi(c.Param("id"))
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid show ID"})
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"show_id": showID, "seats": seats})
+		//  Get show info
+		var show models.Show
+		if err := db.First(&show, showID).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Show not found"})
+			return
+		}
+
+		//  Fetch all booked seats for this show
+		var bookedSeats []models.BookingSeat
+		if err := db.Where("show_id = ?", showID).Find(&bookedSeats).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch booked seats"})
+			return
+		}
+
+		//  Build booked seat map for fast lookup
+		bookedMap := make(map[string]bool)
+		for _, s := range bookedSeats {
+			bookedMap[s.SeatCode] = true
+		}
+
+		// Build seat layout dynamically (rows A–E, 10 seats each)
+		rows := []string{"A", "B", "C", "D", "E"}
+		totalSeats := 10
+		layout := []map[string]interface{}{}
+
+		for _, row := range rows {
+			rowSeats := []map[string]interface{}{}
+			for i := 1; i <= totalSeats; i++ {
+				code := row + strconv.Itoa(i)
+				status := "available"
+				if bookedMap[code] {
+					status = "booked"
+				}
+
+				rowSeats = append(rowSeats, gin.H{
+					"seat_code": code,
+					"status":    status,
+					"price":     show.Price,
+				})
+			}
+			layout = append(layout, gin.H{"row": row, "seats": rowSeats})
+		}
+
+		// Return the layout
+		c.JSON(http.StatusOK, gin.H{
+			"show_id":     show.ID,
+			"hall":        show.Hall,
+			"price":       show.Price,
+			"seat_layout": layout,
+		})
 	}
 }

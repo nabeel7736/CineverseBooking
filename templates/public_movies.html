@@ -80,33 +80,6 @@
 
 
   <script>
-    // async function loadMovies(){
-    //   const res = await fetch('/api/movies');
-    //   const data = await res.json();
-    //   const container = document.getElementById('moviesContainer');
-    //   container.innerHTML = '';
-    //   if(res.ok){
-    //     data.movies.forEach(m => {
-    //       const col = document.createElement('div');
-    //       col.className = 'col-md-4 mb-4';
-    //       col.innerHTML = `
-    //         <div class="movie-card">
-    //           <img src="${m.poster_url || 'https://via.placeholder.com/400x300'}" alt="${m.title}">
-    //           <div class="movie-card-body">
-    //             <h5>${m.title}</h5>
-    //             <p>${m.description ? m.description.substring(0, 100)+'...' : ''}</p>
-    //             <a href="/movies/${m.id}" class="btn btn-primary w-100">View Shows</a>
-    //           </div>
-    //         </div>
-    //       `;
-    //       container.appendChild(col);
-    //     });
-    //   } else {
-    //     container.innerHTML = `<p class="text-center">No movies found.</p>`;
-    //   }
-    // }
-    // loadMovies();
-
     async function loadMovies() {
   try {
     const res = await fetch('/api/movies');

@@ -102,16 +102,3 @@ func BookTickets(db *gorm.DB) gin.HandlerFunc {
 		c.JSON(http.StatusCreated, gin.H{"message": "booking confirmed"})
 	}
 }
-
-func GetUserBookings(db *gorm.DB) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		uidv, _ := c.Get("user_id")
-		userID := uidv.(uint)
-		var bookings []models.Booking
-		if err := db.Preload("Show").Preload("Show.Movie").Where("user_id = ?", userID).Find(&bookings).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"bookings": bookings})
-	}
-}
