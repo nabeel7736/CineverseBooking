@@ -62,8 +62,8 @@ func GetShowSeats(db *gorm.DB) gin.HandlerFunc {
 
 		// Return the layout
 		c.JSON(http.StatusOK, gin.H{
-			"show_id":     show.ID,
-			"hall":        show.Hall,
+			"show_id": show.ID,
+			// "hall":        show.Hall,
 			"price":       show.Price,
 			"seat_layout": layout,
 		})

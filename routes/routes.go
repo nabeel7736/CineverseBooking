@@ -79,6 +79,9 @@ func SetupRouter() *gin.Engine {
 		admin.POST("/movies", controllers.AdminAddMovie(db))
 		admin.DELETE("/movies/:id", controllers.AdminDeleteMovie(db))
 
+		admin.GET("/theatres", controllers.GetAllTheatres(db))
+		admin.GET("/theatres/:id/screens", controllers.GetScreensByTheatre(db))
+
 		admin.GET("/shows", controllers.AdminListShows(db))
 		admin.POST("/shows", controllers.AdminAddShow(db))
 		admin.PUT("/shows/:id", controllers.AdminEditShow(db))
@@ -89,6 +92,7 @@ func SetupRouter() *gin.Engine {
 		admin.PUT("/bookings/:id/status", controllers.UpdateBookingStatus(db))
 		admin.DELETE("/bookings/:id", controllers.DeleteBooking(db))
 
+		admin.POST("users", controllers.AddUser(db))
 		admin.GET("/users", controllers.GetAllUsers(db))
 		admin.PUT("/users/:id/block", controllers.BlockUser(db))
 		admin.DELETE("/users/:id", controllers.DeleteUser(db))

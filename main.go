@@ -8,6 +8,7 @@ import (
 	"cineverse/config"
 	"cineverse/models"
 	"cineverse/routes"
+	"cineverse/utils"
 
 	"gorm.io/gorm"
 )
@@ -21,6 +22,8 @@ func main() {
 		log.Fatalf("migration failed: %v", err)
 	}
 
+	utils.SeedDummyTheatres()
+
 	r := routes.SetupRouter()
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -33,5 +36,5 @@ func main() {
 
 func migrate(db *gorm.DB) error {
 	return db.AutoMigrate(&models.User{}, &models.Admin{}, &models.Movie{}, &models.Show{}, &models.Booking{}, &models.RefreshToken{},
-		&models.Theatre{}, &models.Hall{}, &models.BookingSeat{}, &models.Payment{}, &models.Wishlist{})
+		&models.Theatre{}, &models.Screen{}, &models.BookingSeat{}, &models.Payment{}, &models.Wishlist{})
 }

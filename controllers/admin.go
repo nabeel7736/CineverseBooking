@@ -52,8 +52,6 @@ func AdminAddMovie(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-// Admin: Create show
-
 // Admin: List all bookings (with optional status filter)
 func GetAllBookings(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -62,19 +60,19 @@ func GetAllBookings(db *gorm.DB) gin.HandlerFunc {
 		search := c.Query("search")
 		status := c.Query("status")
 
-		query := db.Preload("User").Preload("Show").Preload("Seats").Preload("Payment").Order("created_at desc")
+		query := db.Preload("User").Preload("Show").Preload("Seats").Preload("Payment")
 
 		if status != "" {
 			query = query.Where("status = ?", status)
 		}
 
 		if search != "" {
-			query = query.Joins("JOIN users ON users.id = bookings.user_id").
-				Where("LOWER(users.name) LIKE LOWER(?) OR LOWER(users.email) LIKE LOWER(?)", "%"+search+"%", "%"+search+"%")
+			query = query.Joins("JOIN users u ON u.id = bookings.user_id").
+				Where("LOWER(u.full_name) LIKE LOWER(?) OR LOWER(u.email) LIKE LOWER(?)", "%"+search+"%", "%"+search+"%")
 		}
 
 		if err := query.Order("bookings.created_at DESC").Find(&bookings).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch bookings"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
@@ -95,6 +93,7 @@ func UpdateBookingStatus(db *gorm.DB) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
 			return
 		}
+
 		var booking models.Booking
 		if err := db.First(&booking, id).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Booking not found"})
@@ -114,11 +113,55 @@ func UpdateBookingStatus(db *gorm.DB) gin.HandlerFunc {
 // DeleteBooking — Admin: delete booking
 func DeleteBooking(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		idParam := c.Param("id")
+		id, err := strconv.Atoi(idParam)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid booking ID"})
+			return
+		}
 
-		id := c.Param("id")
+		tx := db.Begin()
+		defer func() {
+			if r := recover(); r != nil {
+				tx.Rollback()
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Unexpected server error"})
+			}
+		}()
 
-		if err := db.Delete(&models.Booking{}, id).Error; err != nil {
+		var booking models.Booking
+		if err := tx.Preload("Payment").First(&booking, id).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusNotFound, gin.H{"error": "Booking not found"})
+			return
+		}
+
+		// Restrict deletion for completed or paid bookings
+		status := strings.ToLower(booking.Status)
+		paymentStatus := strings.ToLower(booking.Payment.Status)
+
+		if status == "completed" || status == "paid" || paymentStatus == "completed" {
+			tx.Rollback()
+			c.JSON(http.StatusForbidden, gin.H{"error": "Cannot delete a completed or paid booking"})
+			return
+		}
+
+		// Delete associated seats
+		if err := tx.Where("booking_id = ?", id).Delete(&models.BookingSeat{}).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete booking seats"})
+			return
+		}
+
+		// Delete the booking itself
+		if err := tx.Delete(&models.Booking{}, id).Error; err != nil {
+			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete booking"})
+			return
+		}
+
+		if err := tx.Commit().Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
 			return
 		}
 
@@ -136,7 +179,7 @@ func GetBookingDetails(db *gorm.DB) gin.HandlerFunc {
 		if err := db.Preload("User").
 			Preload("Show").
 			Preload("Show.Theatre").
-			Preload("Show.Movie").
+			// Preload("Show.Movie").
 			Preload("Seats").
 			Preload("Payment").
 			First(&booking, id).Error; err != nil {
@@ -195,73 +238,102 @@ func AdminDeleteMovie(db *gorm.DB) gin.HandlerFunc {
 
 func AdminAddShow(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// Define a temporary struct for parsing JSON
 		var payload struct {
-			MovieID int     `json:"movie_id" form:"movie_id"`
-			Hall    string  `json:"hall" form:"hall"`
-			Start   string  `json:"start_time" form:"start_time"` // RFC3339 or custom parse
-			Seats   int     `json:"seats_total" form:"seats_total"`
-			Price   float64 `json:"price" form:"price"`
+			MovieID    uint    `json:"movie_id"`
+			TheatreID  uint    `json:"theatre_id"`
+			ScreenID   uint    `json:"screen_id"`
+			StartTime  string  `json:"start_time"` // receive as string
+			Language   string  `json:"language"`
+			Price      float64 `json:"price"`
+			SeatsTotal int     `json:"seats_total"`
 		}
-		if err := c.ShouldBind(&payload); err != nil {
+
+		// Bind the payload
+		if err := c.ShouldBindJSON(&payload); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Validate Movie
+		if payload.MovieID == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Movie ID is required"})
 			return
 		}
 		var movie models.Movie
 		if err := db.First(&movie, payload.MovieID).Error; err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid movie id"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid movie ID"})
 			return
 		}
 
-		// parse time
-		// t, err := time.Parse("2006-01-02T15:04", payload.Start)
-		// if err != nil {
-		// 	c.JSON(http.StatusBadRequest, gin.H{"error": "invalid datetime format"})
-		// 	return
-		// }
-		t, err := time.Parse(time.RFC3339, payload.Start)
-		if err != nil {
-			// fallback: handle "2006-01-02T15:04" (without seconds)
-			t, err = time.Parse("2006-01-02T15:04", payload.Start)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid datetime format"})
-				return
-			}
+		// Validate Screen
+		if payload.ScreenID == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Screen ID is required"})
+			return
+		}
+		var screen models.Screen
+		if err := db.Preload("Theatre").First(&screen, payload.ScreenID).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid screen ID"})
+			return
 		}
 
+		// Parse Start Time
+		startTime, err := time.Parse(time.RFC3339, payload.StartTime)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start_time format. Must be RFC3339."})
+			return
+		}
+
+		// Create the show
 		show := models.Show{
 			MovieID:     payload.MovieID,
-			Hall:        payload.Hall,
-			StartTime:   t,
-			SeatsTotal:  payload.Seats,
-			SeatsBooked: 0,
+			ScreenID:    payload.ScreenID,
+			StartTime:   startTime,
+			Language:    payload.Language,
 			Price:       payload.Price,
+			SeatsTotal:  payload.SeatsTotal,
+			SeatsBooked: 0,
 		}
+
+		// Save to DB
 		if err := db.Create(&show).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
-		c.JSON(http.StatusCreated, gin.H{"show": show})
+		// Reload with relations
+		if err := db.Preload("Movie").
+			Preload("Screen.Theatre").
+			First(&show, show.ID).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load created show"})
+			return
+		}
+
+		c.JSON(http.StatusCreated, gin.H{
+			"message": "Show added successfully",
+			"show":    show,
+		})
 	}
 }
 
-// Admin: List Shows
 func AdminListShows(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var shows []models.Show
-		if err := db.Preload("Movie").Find(&shows).Error; err != nil {
+		if err := db.Preload("Movie").Preload("Screen.Theatre").Find(&shows).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		// Format for template
+
 		var formatted []gin.H
 		for _, s := range shows {
 			formatted = append(formatted, gin.H{
 				"id":              s.ID,
 				"movie_title":     s.Movie.Title,
-				"hall":            s.Hall,
-				"date":            s.StartTime.Format("2006-01-02"),
-				"time":            s.StartTime.Format("15:04"),
+				"theatre":         s.Screen.Theatre.Name,
+				"screen":          s.Screen.Name,
+				"date":            s.StartTime,
+				"language":        s.Language,
+				"time":            s.StartTime,
 				"available_seats": s.SeatsTotal - s.SeatsBooked,
 				"price":           s.Price,
 			})
@@ -295,17 +367,17 @@ func AdminEditShow(db *gorm.DB) gin.HandlerFunc {
 		idStr := c.Param("id")
 		id, err := strconv.Atoi(idStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid show id"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid show ID"})
 			return
 		}
 
 		var payload struct {
-			MovieID int     `json:"movie_id" form:"movie_id"`
-			Hall    string  `json:"hall" form:"hall"`
-			Start   string  `json:"start_time" form:"start_time"`
-			Seats   int     `json:"seats_total" form:"seats_total"`
-			Price   float64 `json:"price" form:"price"`
+			MovieID   uint      `json:"movie_id" form:"movie_id"`
+			StartTime time.Time `json:"start_time" form:"start_time"`
+			Seats     int       `json:"seats_total" form:"seats_total"`
+			Price     float64   `json:"price" form:"price"`
 		}
+
 		if err := c.ShouldBind(&payload); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
@@ -313,37 +385,16 @@ func AdminEditShow(db *gorm.DB) gin.HandlerFunc {
 
 		var show models.Show
 		if err := db.First(&show, id).Error; err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "show not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "Show not found"})
 			return
 		}
 
-		// Optional: validate MovieID if changed
-		if payload.MovieID != 0 && payload.MovieID != int(show.MovieID) {
-			var movie models.Movie
-			if err := db.First(&movie, payload.MovieID).Error; err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid movie id"})
-				return
-			}
+		// ✅ Update only provided fields
+		if payload.MovieID != 0 {
 			show.MovieID = payload.MovieID
 		}
-
-		// Parse and update start time if provided
-		if payload.Start != "" {
-			t, err := time.Parse(time.RFC3339, payload.Start)
-			if err != nil {
-				// fallback: handle "2006-01-02T15:04"
-				t, err = time.Parse("2006-01-02T15:04", payload.Start)
-				if err != nil {
-					c.JSON(http.StatusBadRequest, gin.H{"error": "invalid datetime format"})
-					return
-				}
-			}
-			show.StartTime = t
-		}
-
-		// Update fields if provided
-		if payload.Hall != "" {
-			show.Hall = payload.Hall
+		if !payload.StartTime.IsZero() {
+			show.StartTime = payload.StartTime
 		}
 		if payload.Seats != 0 {
 			show.SeatsTotal = payload.Seats
@@ -352,13 +403,15 @@ func AdminEditShow(db *gorm.DB) gin.HandlerFunc {
 			show.Price = payload.Price
 		}
 
-		// Save updates
 		if err := db.Save(&show).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"message": "show updated successfully", "show": show})
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Show updated successfully",
+			"show":    show,
+		})
 	}
 }
 
@@ -383,5 +436,30 @@ func AdminDashboard(db *gorm.DB) gin.HandlerFunc {
 			"TotalBookings": totalBookings,
 			"Token":         token,
 		})
+	}
+}
+
+// Fetch all theatres
+func GetAllTheatres(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var theatres []models.Theatre
+		if err := db.Preload("Screens").Find(&theatres).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch theatres"})
+			return
+		}
+		c.JSON(http.StatusOK, theatres)
+	}
+}
+
+// Fetch screens by theatre ID
+func GetScreensByTheatre(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		var screens []models.Screen
+		if err := db.Where("theatre_id = ?", id).Find(&screens).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch screens"})
+			return
+		}
+		c.JSON(http.StatusOK, screens)
 	}
 }

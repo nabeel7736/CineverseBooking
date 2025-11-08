@@ -39,7 +39,7 @@ type Movie struct {
 	ID          uint       `gorm:"primaryKey"`
 	Title       string     `gorm:"not null" json:"title"`
 	Description string     `gorm:"type:text" json:"description"`
-	DurationMin int        `json:"duration_min"` // duration in minutes
+	DurationMin string     `json:"duration_min"` // duration in minutes
 	ReleaseDate *time.Time `gorm:"type:timestamp" json:"release_date"`
 	PosterURL   string     `json:"posterUrl"`
 	CreatedAt   time.Time
@@ -49,54 +49,64 @@ type Movie struct {
 }
 
 type Theatre struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	Name      string    `gorm:"size:200;not null" json:"name"`
-	Location  string    `gorm:"size:300" json:"location,omitempty"`
-	Halls     []Hall    `gorm:"foreignKey:TheatreID" json:"halls,omitempty"`
-	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+	ID        uint     `gorm:"primaryKey" json:"id"`
+	Name      string   `gorm:"not null" json:"name"`
+	Location  string   `gorm:"not null" json:"location"`
+	Screens   []Screen `gorm:"foreignKey:TheatreID" json:"screens"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
-type Hall struct {
-	ID         uint      `gorm:"primaryKey" json:"id"`
-	TheatreID  uint      `gorm:"index;not null" json:"theatre_id"`
-	Name       string    `gorm:"size:100;not null" json:"name"`
-	TotalSeats int       `json:"total_seats"`
-	LayoutJSON string    `gorm:"type:json" json:"layout_json,omitempty"` // optional: store seat layout meta
-	CreatedAt  time.Time `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt  time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+type Screen struct {
+	ID         uint    `gorm:"primaryKey"`
+	Name       string  `gorm:"not null" json:"name"`
+	SeatsTotal int     `json:"seats_total"`
+	TheatreID  uint    `gorm:"index;not null" json:"theatre_id"`
+	Theatre    Theatre `gorm:"foreignKey:TheatreID" json:"theatre"`
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 type Show struct {
-	ID          uint           `gorm:"primaryKey" json:"id"`
-	MovieID     int            `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"movie_id"`
-	Movie       Movie          `gorm:"foreignKey:MovieID" json:"movie"`
-	HallID      uint           `gorm:"index;not null" json:"hall_id"`
-	Hall        string         `json:"hall"`
-	StartTime   time.Time      `gorm:"not null" json:"start_time"`
-	SeatsTotal  int            `json:"seats_total"`
-	SeatsBooked int            `json:"seats_booked"`
-	Language    string         `gorm:"size:50" json:"language,omitempty"`
-	Price       float64        `gorm:"type:decimal(10,2)" json:"price"`
-	Seats       []BookingSeat  `gorm:"-" json:"-"`
+	ID      uint  `gorm:"primaryKey" json:"id"`
+	MovieID uint  `gorm:"index;not null" json:"movie_id"`
+	Movie   Movie `gorm:"foreignKey:MovieID"`
+
+	// ScreenID uint   `gorm:"index" json:"screen_id"`
+	ScreenID uint   `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"screen_id"`
+	Screen   Screen `gorm:"foreignKey:ScreenID"`
+
+	TheatreID uint    `gorm:"-" json:"theatre_id"` // for frontend convenience
+	Theatre   Theatre `gorm:"-" json:"theatre"`
+
+	StartTime   time.Time `form:"start_time" json:"start_time"`
+	Language    string    `gorm:"size:50" json:"language"`
+	Price       float64   `gorm:"type:decimal(10,2)" json:"price"`
+	SeatsTotal  int       `json:"seats_total"`
+	SeatsBooked int       `json:"seats_booked"`
+
+	BookingSeat []BookingSeat  `gorm:"-" json:"-"`
 	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
-	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
+	UpdatedAt   time.Time      `json:"updates_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"index"`
 }
 
 type Booking struct {
-	ID            uint `gorm:"primaryKey"`
-	UserID        uint `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"user_id"`
-	ShowID        uint `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"show_id"`
-	Show          Show
+	ID     uint `gorm:"primaryKey" json:"id"`
+	UserID uint `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"user_id"`
+	User   User `gorm:"foreignKey:UserID" json:"user"`
+
+	ShowID uint `gorm:"index;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"show_id"`
+	Show   Show `gorm:"foreignKey:ShowID" json:"show"`
+	// StartTime     time.Time     `gorm:"not null" json:"start_time"`
 	SeatsCount    int           `json:"seats_count"`
 	TotalAmount   float64       `gorm:"type:decimal(10,2)" json:"total_amount"`
 	Status        string        `gorm:"type:varchar(20);default:'pending'" json:"status"` // e.g., "pending", "confirmed", "cancelled"
 	PaymentMethod string        `gorm:"size:50" json:"payment_method"`
 	CreatedAt     time.Time     `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt     time.Time     `gorm:"autoUpdateTime" json:"updated_at"`
-	Seats         []BookingSeat `gorm:"foreignKey:BookingID" json:"seats,omitempty"`
-	Payment       *Payment      `gorm:"foreignKey:BookingID" json:"payment,omitempty"`
+	Seats         []BookingSeat `gorm:"foreignKey:BookingID" json:"seats"`
+	Payment       *Payment      `gorm:"foreignKey:BookingID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"payment"`
 }
 
 type BookingSeat struct {
