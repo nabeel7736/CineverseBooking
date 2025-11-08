@@ -101,9 +101,9 @@ type Booking struct {
 	// StartTime     time.Time     `gorm:"not null" json:"start_time"`
 	SeatsCount    int           `json:"seats_count"`
 	TotalAmount   float64       `gorm:"type:decimal(10,2)" json:"total_amount"`
-	Status        string        `gorm:"type:varchar(20);default:'pending'" json:"status"` // e.g., "pending", "confirmed", "cancelled"
+	Status        string        `gorm:"type:varchar(20);default:'pending';index" json:"status"` // e.g., "pending", "confirmed", "cancelled"
 	PaymentMethod string        `gorm:"size:50" json:"payment_method"`
-	CreatedAt     time.Time     `gorm:"autoCreateTime" json:"created_at"`
+	CreatedAt     time.Time     `gorm:"autoCreateTime;index" json:"created_at"`
 	UpdatedAt     time.Time     `gorm:"autoUpdateTime" json:"updated_at"`
 	Seats         []BookingSeat `gorm:"foreignKey:BookingID" json:"seats"`
 	Payment       *Payment      `gorm:"foreignKey:BookingID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;" json:"payment"`

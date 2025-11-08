@@ -60,7 +60,8 @@ func GetAllBookings(db *gorm.DB) gin.HandlerFunc {
 		search := c.Query("search")
 		status := c.Query("status")
 
-		query := db.Preload("User").Preload("Show").Preload("Seats").Preload("Payment")
+		query := db.Preload("User").Preload("Seats").Preload("Payment").
+			Preload("Show.Movie").Preload("Show.Screen.Theatre")
 
 		if status != "" {
 			query = query.Where("status = ?", status)
@@ -137,11 +138,14 @@ func DeleteBooking(db *gorm.DB) gin.HandlerFunc {
 
 		// Restrict deletion for completed or paid bookings
 		status := strings.ToLower(booking.Status)
-		paymentStatus := strings.ToLower(booking.Payment.Status)
+		paymentStatus := ""
+		if booking.Payment != nil {
+			paymentStatus = strings.ToLower(booking.Payment.Status)
+		}
 
-		if status == "completed" || status == "paid" || paymentStatus == "completed" {
+		if status == "confirmed" || paymentStatus == "completed" {
 			tx.Rollback()
-			c.JSON(http.StatusForbidden, gin.H{"error": "Cannot delete a completed or paid booking"})
+			c.JSON(http.StatusForbidden, gin.H{"error": "Cannot delete a confirmed or paid booking"})
 			return
 		}
 
@@ -177,11 +181,10 @@ func GetBookingDetails(db *gorm.DB) gin.HandlerFunc {
 
 		// Fetch booking with all related data
 		if err := db.Preload("User").
-			Preload("Show").
-			Preload("Show.Theatre").
-			// Preload("Show.Movie").
 			Preload("Seats").
 			Preload("Payment").
+			Preload("Show.Movie").
+			Preload("Show.Screen.Theatre").
 			First(&booking, id).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Booking not found"})
 			return
