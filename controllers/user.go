@@ -39,6 +39,32 @@ func GetAllUsers(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
+func GetUserDetails(db *gorm.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		var user models.User
+
+		// Preload Bookings for the details view
+		if err := db.Model(&models.User{}).
+			Preload("Bookings.Show.Movie").
+			Where("id = ? AND deleted = FALSE", id).
+			First(&user).Error; err != nil {
+
+			if err.Error() == "record not found" {
+				c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user details"})
+			return
+		}
+
+		// Compute booking count
+		user.BookingsCount = int64(len(user.Bookings))
+
+		c.JSON(http.StatusOK, gin.H{"user": user})
+	}
+}
+
 // BlockUser - toggle user status
 func BlockUser(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {

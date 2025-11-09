@@ -117,6 +117,25 @@
       padding: 0.45rem 0.75rem;
     }
 
+    #userDetailsModal .modal-body ul {
+      list-style: none;
+      padding: 0;
+    }
+    .booking-item {
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      background: #f9f9f9;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      text-align: left; /* Ensure text inside is left-aligned */
+    }
+    .booking-item p {
+      margin-bottom: 5px;
+      font-size: 0.9rem;
+      color: #333;
+    }
+
     @media (max-width: 992px) {
       .sidebar {
         width: 200px;
@@ -219,6 +238,45 @@
     </div>
   </div>
 
+
+  <div class="modal fade" id="userDetailsModal" tabindex="-1" aria-labelledby="userDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="userDetailsModalLabel">User Details</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="userLoading" class="text-center py-5">Loading details...</div>
+          <div id="userInfoContent" style="display:none;">
+            <h4 class="fw-bold mb-3" id="detailFullName"></h4>
+            
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <p><strong>ID:</strong> <span id="detailID"></span></p>
+                    <p><strong>Email:</strong> <span id="detailEmail"></span></p>
+                    <p><strong>Status:</strong> <span id="detailStatus" class="badge"></span></p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Created:</strong> <span id="detailCreatedAt"></span></p>
+                    <p><strong>Updated:</strong> <span id="detailUpdatedAt"></span></p>
+                    <p><strong>Total Bookings:</strong> <span id="detailBookingsCount"></span></p>
+                </div>
+            </div>
+
+            <hr>
+            <h5 class="mt-4 mb-3">Booking History</h5>
+            <div id="detailBookingsList">
+              </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     const API = '/api/admin/users';
@@ -259,6 +317,9 @@
             <td>${u.bookings_count || 0}</td>
             <td><span class="badge ${u.blocked ? 'bg-danger' : 'bg-success'}">${status}</span></td>
             <td>
+              <button class="btn btn-sm btn-info me-2 text-white" onclick="viewUserDetails(${u.id})">
+                Details
+              </button>
               <button class="btn btn-sm btn-warning me-2" onclick="toggleBlock(${u.id})">
                 ${u.blocked ? 'Unblock' : 'Block'}
               </button>
@@ -266,6 +327,78 @@
             </td>
           </tr>`;
       });
+    }
+
+    async function viewUserDetails(id) {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        alert('Session expired. Please login again.');
+        return (window.location.href = '/login');
+      }
+
+      const modalEl = document.getElementById('userDetailsModal');
+      const modal = new bootstrap.Modal(modalEl);
+      
+      // Reset and show loading state
+      document.getElementById('userLoading').style.display = 'block';
+      document.getElementById('userInfoContent').style.display = 'none';
+      modal.show();
+
+      try {
+        const res = await fetch(`${API}/${id}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        const data = await res.json();
+
+        if (res.ok && data.user) {
+          const user = data.user;
+          document.getElementById('detailFullName').textContent = user.full_name;
+          document.getElementById('detailID').textContent = user.id;
+          document.getElementById('detailEmail').textContent = user.email;
+          document.getElementById('detailBookingsCount').textContent = user.bookings_count;
+          
+          const statusBadge = document.getElementById('detailStatus');
+          statusBadge.textContent = user.blocked ? 'Blocked' : 'Active';
+          statusBadge.className = 'badge ' + (user.blocked ? 'bg-danger' : 'bg-success');
+          
+          document.getElementById('detailCreatedAt').textContent = new Date(user.created_at).toLocaleString();
+          document.getElementById('detailUpdatedAt').textContent = new Date(user.updated_at).toLocaleString();
+
+          // Render bookings
+          const bookingsList = document.getElementById('detailBookingsList');
+          bookingsList.innerHTML = '';
+          if (user.Bookings && user.Bookings.length > 0) {
+            user.Bookings.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            user.Bookings.forEach(b => {
+              const bookingStatusClass = b.status === 'confirmed' ? 'text-success' : b.status === 'cancelled' ? 'text-danger' : 'text-warning';
+              
+              const bookingHtml = `
+                <div class="booking-item">
+                  <p class="mb-1"><strong>Booking ID:</strong> ${b.id} | <strong>Status:</strong> <span class="${bookingStatusClass} fw-bold">${b.status.toUpperCase()}</span></p>
+                  <p class="mb-1"><strong>Movie:</strong> ${b.show && b.show.Movie ? b.show.Movie.title : 'N/A'}</p>
+                  <p class="mb-1"><strong>Showtime:</strong> ${b.show ? new Date(b.show.start_time).toLocaleString() : 'N/A'}</p>
+                  <p class="mb-1"><strong>Seats:</strong> ${b.seats_count}</p>
+                  <p class="mb-0"><strong>Total Amount:</strong> ₹${b.total_amount}</p>
+                </div>
+              `;
+              bookingsList.innerHTML += bookingHtml;
+            });
+          } else {
+            bookingsList.innerHTML = '<p class="text-muted">No booking history found.</p>';
+          }
+
+          document.getElementById('userLoading').style.display = 'none';
+          document.getElementById('userInfoContent').style.display = 'block';
+
+        } else {
+          alert(data.error || 'Failed to fetch user details');
+          modal.hide();
+        }
+      } catch (err) {
+        console.error('Fetch user details error:', err);
+        alert('Network error. Failed to fetch user details.');
+        modal.hide();
+      }
     }
 
     async function toggleBlock(id) {
