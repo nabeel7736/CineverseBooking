@@ -207,6 +207,7 @@ func CreateBooking(db *gorm.DB) gin.HandlerFunc {
 		if err := db.Preload("User").
 			Preload("Show").
 			Preload("Show.Movie").
+			Preload("Show.Screen.Theatre").
 			Preload("Seats").
 			First(&fullBooking, booking.ID).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch booking details"})
