@@ -788,33 +788,42 @@
 
           // seats
           // preferred: s.seats_total & s.seats_booked; fallback: available_seats from AdminListShows
-          const seatsTotal = (s.seats_total ?? s.SeatsTotal ?? s.total_seats ?? s.totalSeats ?? null);
+         const seatsTotal = (s.seats_total ?? s.SeatsTotal ?? s.total_seats ?? s.totalSeats ?? null);
           const seatsBooked = (s.seats_booked ?? s.SeatsBooked ?? s.booked ?? s.booked_seats ?? null);
-          const availableSeats = (s.available_seats ?? s.availableSeats ?? s.available ?? null);
+          const availableSeats = (s.available_seats ?? s.availableSeats ?? s.available ?? null); //
 
           // Compute displayed numbers:
           let total = 0, booked = 0, left = 0;
-          if (seatsTotal !== null) {
-            total = parseInt(seatsTotal) || 0;
-            if (seatsBooked !== null) {
-              booked = parseInt(seatsBooked) || 0;
-            } else if (availableSeats !== null) {
-              booked = Math.max(0, total - (parseInt(availableSeats) || 0));
-            } else {
-              booked = 0;
-            }
+          // if (seatsTotal !== null) {
+          //   total = parseInt(seatsTotal) || 0;
+          //   if (seatsBooked !== null) {
+          //     booked = parseInt(seatsBooked) || 0;
+          //   } else if (availableSeats !== null) {
+          //     booked = Math.max(0, total - (parseInt(availableSeats) || 0));
+          //   } else {
+          //     booked = 0;
+          //   }
+          //   left = Math.max(0, total - booked);
+          // } else if (availableSeats !== null) {
+          //   // only have available seats
+          //   left = parseInt(availableSeats) || 0;
+          //   total = left; // we don't know actual total, show available as total
+          //   booked = 0;
+          // } else if (s.available_seats !== undefined) {
+          //   left = parseInt(s.available_seats) || 0;
+          //   total = left;
+          //   booked = 0;
+          // } else {
+          //   total = 0; booked = 0; left = 0;
+          // }
+          total = parseInt(seatsTotal) || 0;
+          booked = parseInt(seatsBooked) || 0;
+
+          if (total > 0) {
             left = Math.max(0, total - booked);
           } else if (availableSeats !== null) {
-            // only have available seats
-            left = parseInt(availableSeats) || 0;
-            total = left; // we don't know actual total, show available as total
-            booked = 0;
-          } else if (s.available_seats !== undefined) {
-            left = parseInt(s.available_seats) || 0;
-            total = left;
-            booked = 0;
-          } else {
-            total = 0; booked = 0; left = 0;
+             // If we only have available seats (for some reason), show that as left
+             left = parseInt(availableSeats) || 0;
           }
 
           // create table row

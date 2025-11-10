@@ -336,6 +336,8 @@ func AdminListShows(db *gorm.DB) gin.HandlerFunc {
 				"screen":          s.Screen.Name,
 				"date":            s.StartTime,
 				"language":        s.Language,
+				"seats_total":     s.SeatsTotal,
+				"seats_booked":    s.SeatsBooked,
 				"time":            s.StartTime,
 				"available_seats": s.SeatsTotal - s.SeatsBooked,
 				"price":           s.Price,
