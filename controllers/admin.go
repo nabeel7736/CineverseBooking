@@ -27,7 +27,7 @@ func GetTotalMoviesFromDB(db *gorm.DB) int64 {
 
 func GetTotalBookingsFromDB(db *gorm.DB) int64 {
 	var count int64
-	db.Model(&models.Booking{}).Count(&count)
+	db.Model(&models.Booking{}).Where("status = ?", "confirmed").Count(&count)
 	return count
 }
 
@@ -361,13 +361,12 @@ func AdminListShows(db *gorm.DB) gin.HandlerFunc {
 
 		var formatted []gin.H
 		for _, s := range shows {
-			// Fetch the specific booked seat codes, but only for CONFIRMED bookings
 			var confirmedSeats []models.BookingSeat
 			db.Table("booking_seats").
 				Select("booking_seats.seat_code").
 				Joins("JOIN bookings ON bookings.id = booking_seats.booking_id").
 				Where("booking_seats.show_id = ? AND bookings.status = ?", s.ID, "confirmed").
-				Scan(&confirmedSeats) // Scan only the seat_code
+				Scan(&confirmedSeats)
 
 			var bookedSeatCodes []string
 			for _, seat := range confirmedSeats {
@@ -382,11 +381,10 @@ func AdminListShows(db *gorm.DB) gin.HandlerFunc {
 				"date":              s.StartTime,
 				"language":          s.Language,
 				"seats_total":       s.SeatsTotal,
-				"seats_booked":      s.SeatsBooked, // Note: This field may count pending bookings, but the visual preview below won't.
-				"time":              s.StartTime,
+				"seats_booked":      s.SeatsBooked,
 				"available_seats":   s.SeatsTotal - s.SeatsBooked,
 				"price":             s.Price,
-				"booked_seat_codes": bookedSeatCodes, // <<-- NOW CONTAINS ONLY CONFIRMED SEATS
+				"booked_seat_codes": bookedSeatCodes,
 			})
 		}
 		c.JSON(http.StatusOK, gin.H{"shows": formatted})
@@ -440,7 +438,6 @@ func AdminEditShow(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		// ✅ Update only provided fields
 		if payload.MovieID != 0 {
 			show.MovieID = payload.MovieID
 		}
@@ -469,6 +466,17 @@ func AdminEditShow(db *gorm.DB) gin.HandlerFunc {
 // Admin Dashboard
 func AdminDashboard(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
+
+		var adminFullName string = "Admin"
+		if userIDRaw, exists := c.Get("userId"); exists {
+			if userID, ok := userIDRaw.(uint); ok {
+				var admin models.Admin
+				if err := db.First(&admin, userID).Error; err == nil {
+					adminFullName = admin.FullName
+				}
+			}
+		}
+
 		totalUsers := GetTotalUsersFromDB(db)
 		totalMovies := GetTotalMoviesFromDB(db)
 		totalBookings := GetTotalBookingsFromDB(db)
@@ -482,6 +490,7 @@ func AdminDashboard(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		c.HTML(http.StatusOK, "admin_dashboard.html", gin.H{
+			"AdminFullName": adminFullName,
 			"TotalUsers":    totalUsers,
 			"TotalMovies":   totalMovies,
 			"TotalBookings": totalBookings,
