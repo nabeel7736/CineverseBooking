@@ -704,17 +704,20 @@
 
     // --- Seat layout preview
     // `showObj` should provide seats_total and seats_booked optionally
-    function openSeatPreview(showObj) {
+   function openSeatPreview(showObj) {
       const seatsTotal = parseInt(showObj.seats_total ?? showObj.SeatsTotal ?? showObj.available_seats ?? 0);
-      // If API only returned available_seats, we will show that value as available seats
-      const seatsBooked = parseInt(showObj.seats_booked ?? showObj.SeatsBooked ?? (showObj.seats_total ? (showObj.seats_total - (showObj.available_seats ?? showObj.seats_total)) : 0)) || 0;
-      const seatsLeft = Math.max(0, seatsTotal - seatsBooked);
+      
+      // Get the actual list of confirmed seat codes
+      const bookedCodes = showObj.booked_seat_codes || [];
+      const actualBookedCount = bookedCodes.length;
+      const actualSeatsLeft = Math.max(0, seatsTotal - actualBookedCount);
 
       const wrap = document.getElementById('seatGridWrap');
       wrap.innerHTML = '';
 
       const info = document.getElementById('seatPreviewInfo');
-      info.textContent = `Total ${seatsTotal} • Booked ${seatsBooked} • Left ${seatsLeft}`;
+      // Update info line to reflect accurate confirmed counts
+      info.textContent = `Total ${seatsTotal} • Booked ${actualBookedCount} • Left ${actualSeatsLeft}`;
 
       if (!seatsTotal || seatsTotal <= 0) {
         wrap.innerHTML = '<div class="muted">No seat information available for this show.</div>';
@@ -750,7 +753,7 @@
 
 
         let seatIndex = 0; // Tracks which seat we are on (1 to seatsTotal)
-        let bookedCounter = 0; // Tracks how many seats should be marked as booked
+        const bookedCodeSet = new Set(bookedCodes); // Set for fast lookup of confirmed seats
 
         for (let r = 0; r < numRowsToDisplay; r++) {
             const rowCode = ROWS_LETTERS[r];
@@ -758,13 +761,13 @@
             for (let c = 1; c <= SEATS_PER_ROW; c++) {
                 if (seatIndex >= seatsTotal) break; // Stop after total seats reached
                 
-                seatIndex++;
                 const seatCode = rowCode + c;
                 
                 const seat = el('div', 'seat');
-                bookedCounter++;
-                const isBooked = bookedCounter <= seatsBooked;
                 
+                // Check if this specific code is in the confirmed list
+                const isBooked = bookedCodeSet.has(seatCode); 
+
                 seat.classList.add(isBooked ? 'booked' : 'available');
                 seat.title = seatCode;
                 seat.textContent = seatCode; // Seat name: A1, A2, etc.
@@ -775,28 +778,10 @@
                 } else {
                     gridRight.appendChild(seat);
                 }
+                seatIndex++; // Increment the counter
             }
         }
 
-      // Choose columns for the grid (responsive)
-      // const cols = Math.min(12, Math.max(6, Math.ceil(Math.sqrt(seatsTotal))));
-      // const rows = Math.ceil(seatsTotal / cols);
-
-      // const grid = el('div', 'seat-grid');
-      // grid.style.gridTemplateColumns = `repeat(${cols}, auto)`;
-      // grid.style.margin = '8px auto';
-      // grid.style.maxWidth = `${(cols * 34)}px`;
-
-      // // Build seat boxes. We'll mark first `seatsBooked` seats as booked (simple representation).
-      // for (let i = 1; i <= seatsTotal; i++) {
-      //   const seat = el('div', 'seat');
-      //   const isBooked = i <= seatsBooked;
-      //   seat.classList.add(isBooked ? 'booked' : 'available');
-      //   seat.textContent = i;
-      //   grid.appendChild(seat);
-      // }
-
-      // wrap.appendChild(grid);
       const modal = new bootstrap.Modal(document.getElementById('seatPreviewModal'));
       modal.show();
     }

@@ -329,18 +329,32 @@ func AdminListShows(db *gorm.DB) gin.HandlerFunc {
 
 		var formatted []gin.H
 		for _, s := range shows {
+			// Fetch the specific booked seat codes, but only for CONFIRMED bookings
+			var confirmedSeats []models.BookingSeat
+			db.Table("booking_seats").
+				Select("booking_seats.seat_code").
+				Joins("JOIN bookings ON bookings.id = booking_seats.booking_id").
+				Where("booking_seats.show_id = ? AND bookings.status = ?", s.ID, "confirmed").
+				Scan(&confirmedSeats) // Scan only the seat_code
+
+			var bookedSeatCodes []string
+			for _, seat := range confirmedSeats {
+				bookedSeatCodes = append(bookedSeatCodes, seat.SeatCode)
+			}
+
 			formatted = append(formatted, gin.H{
-				"id":              s.ID,
-				"movie_title":     s.Movie.Title,
-				"theatre":         s.Screen.Theatre.Name,
-				"screen":          s.Screen.Name,
-				"date":            s.StartTime,
-				"language":        s.Language,
-				"seats_total":     s.SeatsTotal,
-				"seats_booked":    s.SeatsBooked,
-				"time":            s.StartTime,
-				"available_seats": s.SeatsTotal - s.SeatsBooked,
-				"price":           s.Price,
+				"id":                s.ID,
+				"movie_title":       s.Movie.Title,
+				"theatre":           s.Screen.Theatre.Name,
+				"screen":            s.Screen.Name,
+				"date":              s.StartTime,
+				"language":          s.Language,
+				"seats_total":       s.SeatsTotal,
+				"seats_booked":      s.SeatsBooked, // Note: This field may count pending bookings, but the visual preview below won't.
+				"time":              s.StartTime,
+				"available_seats":   s.SeatsTotal - s.SeatsBooked,
+				"price":             s.Price,
+				"booked_seat_codes": bookedSeatCodes, // <<-- NOW CONTAINS ONLY CONFIRMED SEATS
 			})
 		}
 		c.JSON(http.StatusOK, gin.H{"shows": formatted})
