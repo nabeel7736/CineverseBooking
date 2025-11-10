@@ -9,11 +9,13 @@ func SeedDummyTheatres() {
 	theatres := []models.Theatre{
 
 		{
-			Name:             "Galaxy Cinemas",
-			Location:         "Calicut",
-			ParkingAvailable: true,
-			CarParkingFee:    50.00,
-			BikeParkingFee:   20.00,
+			Name:                "Galaxy Cinemas",
+			Location:            "Calicut",
+			ParkingAvailable:    true,
+			CarParkingFee:       50.00,
+			BikeParkingFee:      20.00,
+			CarParkingCapacity:  50,
+			BikeParkingCapacity: 100,
 
 			Screens: []models.Screen{
 				{Name: "Screen 1", SeatsTotal: 100},
@@ -21,22 +23,26 @@ func SeedDummyTheatres() {
 			},
 		},
 		{
-			Name:             "Dreams Multiplex",
-			Location:         "Malappuram",
-			ParkingAvailable: true,
-			CarParkingFee:    40.00,
-			BikeParkingFee:   15.00,
+			Name:                "Dreams Multiplex",
+			Location:            "Malappuram",
+			ParkingAvailable:    true,
+			CarParkingFee:       40.00,
+			BikeParkingFee:      15.00,
+			CarParkingCapacity:  30,
+			BikeParkingCapacity: 70,
 
 			Screens: []models.Screen{
 				{Name: "Screen 1", SeatsTotal: 90},
 			},
 		},
 		{
-			Name:             "CineVerse Theatre",
-			Location:         "Manjeri",
-			ParkingAvailable: true,
-			CarParkingFee:    30.00,
-			BikeParkingFee:   10.00,
+			Name:                "CineVerse Theatre",
+			Location:            "Manjeri",
+			ParkingAvailable:    true,
+			CarParkingFee:       30.00,
+			BikeParkingFee:      10.00,
+			CarParkingCapacity:  20,
+			BikeParkingCapacity: 50,
 
 			Screens: []models.Screen{
 				{Name: "Screen 1", SeatsTotal: 60},
@@ -54,6 +60,8 @@ func SeedDummyTheatres() {
 			existing.ParkingAvailable = t.ParkingAvailable
 			existing.CarParkingFee = t.CarParkingFee
 			existing.BikeParkingFee = t.BikeParkingFee
+			existing.CarParkingCapacity = t.CarParkingCapacity
+			existing.BikeParkingCapacity = t.BikeParkingCapacity
 			config.DB.Save(&existing)
 
 			for _, screen := range t.Screens {
