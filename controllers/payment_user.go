@@ -73,6 +73,8 @@ func MockConfirmPayment(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
+		wasConfirmed := booking.Status == "confirmed"
+
 		// mock successful payment (90 % success rate)
 		payment.Status = "success"
 		payment.UpdatedAt = time.Now()
@@ -80,6 +82,14 @@ func MockConfirmPayment(db *gorm.DB) gin.HandlerFunc {
 
 		db.Save(&payment)
 		db.Save(&booking)
+
+		if !wasConfirmed {
+			var show models.Show
+			if err := db.First(&show, booking.ShowID).Error; err == nil {
+				show.SeatsBooked += booking.SeatsCount
+				db.Save(&show)
+			}
+		}
 
 		c.JSON(http.StatusOK, gin.H{
 			"message":  "Payment successful (mock)",

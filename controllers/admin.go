@@ -101,9 +101,41 @@ func UpdateBookingStatus(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
+		oldStatus := booking.Status
+
+		tx := db.Begin()
+		defer func() {
+			if r := recover(); r != nil {
+				tx.Rollback()
+			}
+		}()
+
 		booking.Status = body.Status
-		if err := db.Save(&booking).Error; err != nil {
+		if err := tx.Save(&booking).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update booking"})
+			return
+		}
+
+		if oldStatus != "confirmed" && body.Status == "confirmed" {
+			// Transition to confirmed: Increment count
+			var show models.Show
+			if err := tx.First(&show, booking.ShowID).Error; err == nil {
+				show.SeatsBooked += booking.SeatsCount
+				tx.Save(&show)
+			}
+		} else if oldStatus == "confirmed" && body.Status != "confirmed" {
+			// Transition from confirmed: Decrement count
+			var show models.Show
+			if err := tx.First(&show, booking.ShowID).Error; err == nil {
+				if show.SeatsBooked >= booking.SeatsCount { // Prevent negative count
+					show.SeatsBooked -= booking.SeatsCount
+					tx.Save(&show)
+				}
+			}
+		}
+
+		if err := tx.Commit().Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
 			return
 		}
 

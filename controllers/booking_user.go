@@ -108,12 +108,12 @@ func CreateBooking(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		// Update seats booked count
-		show.SeatsBooked += len(req.SeatCodes)
-		if err := tx.Save(&show).Error; err != nil {
-			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update seat count"})
-			return
-		}
+		// show.SeatsBooked += len(req.SeatCodes)
+		// if err := tx.Save(&show).Error; err != nil {
+		// 	tx.Rollback()
+		// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update seat count"})
+		// 	return
+		// }
 
 		tx.Commit()
 
