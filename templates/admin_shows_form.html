@@ -503,9 +503,9 @@
           const opt = document.createElement('option');
           opt.value = s.id ?? s.ID ?? s.Id;
           const seatsCount = s.seats_total ?? s.SeatsTotal ?? s.seats ?? '';
-          opt.textContent = `${s.name} (${seatsCount || '—'} seats)`;
-          if (seatsCount !== undefined && seatsCount !== null) opt.dataset.seats = seatsCount;
-          sel.appendChild(opt);
+  opt.textContent = `${s.name} (${seatsCount || '—'} seats)`;
+          if (seatsCount !== undefined && seatsCount !== null) opt.dataset.seats = seatsCount; // Stores capacity
+  sel.appendChild(opt);
         });
       } catch (err) {
         console.error('loadScreens err', err);
@@ -515,11 +515,11 @@
 
     // When a screen is selected in Add modal, auto-fill seats_total
     document.getElementById('screen_id').addEventListener('change', function () {
-      const selected = this.options[this.selectedIndex];
-      const seats = selected?.dataset?.seats ?? '';
-      const seatsInput = document.getElementById('seats_total');
-      if (seatsInput) seatsInput.value = seats;
-    });
+  const selected = this.options[this.selectedIndex];
+  const seats = selected?.dataset?.seats ?? ''; // Reads capacity from data-seats
+  const seatsInput = document.getElementById('seats_total');
+  if (seatsInput) seatsInput.value = seats; // Sets input value
+});
 
     // When a screen is selected in Edit modal, auto-fill edit_seats_total
     document.getElementById('edit_screen_id').addEventListener('change', function () {
