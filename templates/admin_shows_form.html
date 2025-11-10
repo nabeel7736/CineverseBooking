@@ -131,6 +131,37 @@
     /* small helpers */
     .muted { color: #6c757d; font-size:0.9rem; }
     .small-muted { font-size:0.85rem; color:#888; }
+
+    /* seat layout preview modal */
+    .seat-grid { display:grid; gap:6px; } /* Removed centering on grid, replaced by flex container */
+    .seat { width:28px; height:28px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:10px; cursor:default; user-select:none; padding: 2px; } /* Adjusted font size for A10 */
+    .seat.available { background:#e6f7e6; border:1px solid #b6e6b6; color:#225522; }
+    .seat.booked { background:#ffdede; border:1px solid #ff9e9e; color:#7a1a1a; }
+    .seat.header { font-weight:700; background:transparent; border:none; color:#333; }
+
+    /* New Screen Model Style */
+    .screen-model {
+      background: #333;
+      color: #fff;
+      padding: 5px;
+      text-align: center;
+      font-weight: 600;
+      border-radius: 8px;
+      border-top-left-radius: 40px;
+      border-top-right-radius: 40px;
+      box-shadow: 0 5px 10px rgba(0,0,0,0.3);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 20px;
+    }
+
+    /* Small gap between the two seat sections for the "aisle" */
+    .seat-halves {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+    }
+
   </style>
 </head>
 <body>
@@ -419,32 +450,6 @@
       }
     }
 
-    // // show small poster preview when movie selected in Add modal
-    // document.getElementById('movie_id').addEventListener('change', function(){
-    //   const opt = this.options[this.selectedIndex];
-    //   const url = opt?.dataset?.poster;
-    //   const wrap = document.getElementById('addMoviePosterPreviewWrap');
-    //   const img = document.getElementById('addMoviePosterPreview');
-    //   const titleSpan = document.getElementById('addMoviePosterTitle');
-    //   if (url) {
-    //     img.src = url;
-    //     titleSpan.textContent = opt.textContent || '';
-    //     wrap.style.display = 'inline-flex';
-    //   } else {
-    //     wrap.style.display = 'none';
-    //     img.src = '';
-    //     titleSpan.textContent = '';
-    //   }
-    // });
-
-    // poster modal open
-    // document.getElementById('addPreviewPosterBtn').addEventListener('click', function(){
-    //   const src = document.getElementById('addMoviePosterPreview').src;
-    //   if (!src) return;
-    //   document.getElementById('posterModalImg').src = src;
-    //   const modal = new bootstrap.Modal(document.getElementById('posterModal'));
-    //   modal.show();
-    // });
 
     // --- Load Theatres
     async function loadTheatres() {
@@ -718,25 +723,80 @@
         return;
       }
 
+      const screenModel = el('div', 'screen-model');
+        screenModel.textContent = 'Screen';
+        wrap.appendChild(screenModel);
+
+        const ROWS_LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]; // Up to 10 rows
+        const TOTAL_COLS = 12; // Example: 12 seats per row
+        const SEATS_PER_ROW = TOTAL_COLS;
+        const HALF_COLS = SEATS_PER_ROW / 2;
+
+        const numRowsToDisplay = Math.min(ROWS_LETTERS.length, Math.ceil(seatsTotal / SEATS_PER_ROW));
+
+        // Create the container for two halves
+        const gridContainer = el('div', 'seat-halves'); // Custom class for flex layout
+        
+        const gridLeft = el('div', 'seat-grid');
+        gridLeft.style.gridTemplateColumns = `repeat(${HALF_COLS}, auto)`;
+        gridContainer.appendChild(gridLeft);
+        
+        const gridRight = el('div', 'seat-grid');
+        gridRight.style.gridTemplateColumns = `repeat(${HALF_COLS}, auto)`;
+        gridContainer.appendChild(gridRight);
+        
+        // Append grid container to wrapper
+        wrap.appendChild(gridContainer);
+
+
+        let seatIndex = 0; // Tracks which seat we are on (1 to seatsTotal)
+        let bookedCounter = 0; // Tracks how many seats should be marked as booked
+
+        for (let r = 0; r < numRowsToDisplay; r++) {
+            const rowCode = ROWS_LETTERS[r];
+            
+            for (let c = 1; c <= SEATS_PER_ROW; c++) {
+                if (seatIndex >= seatsTotal) break; // Stop after total seats reached
+                
+                seatIndex++;
+                const seatCode = rowCode + c;
+                
+                const seat = el('div', 'seat');
+                bookedCounter++;
+                const isBooked = bookedCounter <= seatsBooked;
+                
+                seat.classList.add(isBooked ? 'booked' : 'available');
+                seat.title = seatCode;
+                seat.textContent = seatCode; // Seat name: A1, A2, etc.
+                
+                // Split half of two sides
+                if (c <= HALF_COLS) {
+                    gridLeft.appendChild(seat);
+                } else {
+                    gridRight.appendChild(seat);
+                }
+            }
+        }
+
       // Choose columns for the grid (responsive)
-      const cols = Math.min(12, Math.max(6, Math.ceil(Math.sqrt(seatsTotal))));
-      const rows = Math.ceil(seatsTotal / cols);
+      // const cols = Math.min(12, Math.max(6, Math.ceil(Math.sqrt(seatsTotal))));
+      // const rows = Math.ceil(seatsTotal / cols);
 
-      const grid = el('div', 'seat-grid');
-      grid.style.gridTemplateColumns = `repeat(${cols}, auto)`;
-      grid.style.margin = '8px auto';
-      grid.style.maxWidth = `${(cols * 34)}px`;
+      // const grid = el('div', 'seat-grid');
+      // grid.style.gridTemplateColumns = `repeat(${cols}, auto)`;
+      // grid.style.margin = '8px auto';
+      // grid.style.maxWidth = `${(cols * 34)}px`;
 
-      // Build seat boxes. We'll mark first `seatsBooked` seats as booked (simple representation).
-      for (let i = 1; i <= seatsTotal; i++) {
-        const seat = el('div', 'seat');
-        const isBooked = i <= seatsBooked;
-        seat.classList.add(isBooked ? 'booked' : 'available');
-        seat.textContent = i;
-        grid.appendChild(seat);
-      }
+      // // Build seat boxes. We'll mark first `seatsBooked` seats as booked (simple representation).
+      // for (let i = 1; i <= seatsTotal; i++) {
+      //   const seat = el('div', 'seat');
+      //   const isBooked = i <= seatsBooked;
+      //   seat.classList.add(isBooked ? 'booked' : 'available');
+      //   seat.textContent = i;
+      //   grid.appendChild(seat);
+      // }
 
-      wrap.appendChild(grid);
+      // wrap.appendChild(grid);
       const modal = new bootstrap.Modal(document.getElementById('seatPreviewModal'));
       modal.show();
     }
@@ -794,28 +854,7 @@
 
           // Compute displayed numbers:
           let total = 0, booked = 0, left = 0;
-          // if (seatsTotal !== null) {
-          //   total = parseInt(seatsTotal) || 0;
-          //   if (seatsBooked !== null) {
-          //     booked = parseInt(seatsBooked) || 0;
-          //   } else if (availableSeats !== null) {
-          //     booked = Math.max(0, total - (parseInt(availableSeats) || 0));
-          //   } else {
-          //     booked = 0;
-          //   }
-          //   left = Math.max(0, total - booked);
-          // } else if (availableSeats !== null) {
-          //   // only have available seats
-          //   left = parseInt(availableSeats) || 0;
-          //   total = left; // we don't know actual total, show available as total
-          //   booked = 0;
-          // } else if (s.available_seats !== undefined) {
-          //   left = parseInt(s.available_seats) || 0;
-          //   total = left;
-          //   booked = 0;
-          // } else {
-          //   total = 0; booked = 0; left = 0;
-          // }
+         
           total = parseInt(seatsTotal) || 0;
           booked = parseInt(seatsBooked) || 0;
 
