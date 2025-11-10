@@ -217,7 +217,7 @@ func CreateBooking(db *gorm.DB) gin.HandlerFunc {
 			"message":       "Booking created successfully",
 			"booking":       fullBooking,
 			"seats":         bookingSeats,
-			"subtotal":      totalAmount,
+			"Total_Amount":  totalAmount,
 			"seat_subtotal": seatSubtotal,
 			"parking_fee":   parkingFee,
 		})
