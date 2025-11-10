@@ -75,12 +75,15 @@ func CreateBooking(db *gorm.DB) gin.HandlerFunc {
 		userID := userIDRaw.(uint)
 
 		var show models.Show
+		if err := db.First(&show, req.ShowID).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Show not found"})
+			return
+		}
 		if err := db.Preload("Screen.Theatre").First(&show, req.ShowID).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Show or associated venue data not found"})
 			return
 		}
 
-		// 🔹 Parking Fee Calculation and Validation
 		var parkingFee float64 = 0.0
 		var vehicleType string = ""
 		var parkingAvailable = show.Screen.Theatre.ParkingAvailable
@@ -109,10 +112,6 @@ func CreateBooking(db *gorm.DB) gin.HandlerFunc {
 
 		// Validate show
 		// var show models.Show
-		// if err := db.First(&show, req.ShowID).Error; err != nil {
-		// 	c.JSON(http.StatusNotFound, gin.H{"error": "Show not found"})
-		// 	return
-		// }
 
 		// ❗ New validation: Check if requested seat codes are physically valid for the show's capacity
 		for _, code := range req.SeatCodes {
