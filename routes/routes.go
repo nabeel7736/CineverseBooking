@@ -74,6 +74,7 @@ func SetupRouter() *gin.Engine {
 		admin.GET("/analytics/daily-revenue", analyticsController.GetDailyRevenue)
 		admin.GET("/analytics/bookings-per-movie", analyticsController.GetBookingsPerMovie)
 		admin.GET("/analytics/user-activity", analyticsController.GetUserActivity)
+		admin.GET("/analytics/theatre-revenue", analyticsController.GetTheatreRevenueAnalytics)
 
 		admin.GET("/movies", controllers.AdminListMovies(db))
 		admin.POST("/movies", controllers.AdminAddMovie(db))

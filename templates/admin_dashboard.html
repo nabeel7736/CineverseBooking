@@ -76,19 +76,27 @@
           <div class="col-md-6">
             <div class="card p-3">
               <h6 class="fw-semibold mb-2">Daily Revenue (Last 7 Days)</h6>
-              <canvas id="revenueChart" height="200"></canvas>
+              <canvas id="revenueChart" height="300"></canvas>
             </div>
           </div>
           <div class="col-md-6">
             <div class="card p-3">
               <h6 class="fw-semibold mb-2">Top Movies by Bookings</h6>
-              <canvas id="movieChart" height="200"></canvas>
+              <canvas id="movieChart" height="300"></canvas>
+            </div>
+          </div>
+          <div class="col-md-6 mt-4">
+            <div class="card p-3">
+              <h6 class="fw-semibold mb-2">Top 5 Active Users</h6>
+              <canvas id="userChart" height="100"></canvas>
             </div>
           </div>
           <div class="col-md-12 mt-4">
-            <div class="card p-3">
-              <h6 class="fw-semibold mb-2">Top 5 Active Users</h6>
-              <canvas id="userChart" height="150"></canvas>
+            <div class="card p-4">
+              <h4 class="fw-semibold mb-3 text-primary">Theatre Revenue Breakdown</h4>
+              <div id="theatreRevenueContainer">
+                <p class="text-muted text-center">Loading theatre revenue...</p>
+              </div>
             </div>
           </div>
         </div>
@@ -118,17 +126,19 @@
 
     async function loadDashboard() {
       try {
-        const [statsRes, revenueRes, movieRes, userRes] = await Promise.all([
+        const [statsRes, revenueRes, movieRes, userRes, theatreRevenueRes] = await Promise.all([
           fetch("/api/admin/analytics/stats", { headers }),
           fetch("/api/admin/analytics/daily-revenue", { headers }),
           fetch("/api/admin/analytics/bookings-per-movie", { headers }),
           fetch("/api/admin/analytics/user-activity", { headers }),
+          fetch("/api/admin/analytics/theatre-revenue", { headers }),
         ]);
 
         const stats = await statsRes.json();
         const revenue = await revenueRes.json();
         const movies = await movieRes.json();
         const users = await userRes.json();
+        const theatreRevenue = await theatreRevenueRes.json();
 
         // Update totals
         // if (stats.data) {
@@ -141,6 +151,7 @@
         if (revenue.data) renderRevenueChart(revenue.data);
         if (movies.data) renderMovieChart(movies.data);
         if (users.data) renderUserChart(users.data);
+        if (theatreRevenue.data) renderTheatreRevenue(theatreRevenue.data);
 
       } catch (err) {
         console.error("Error loading dashboard:", err);
@@ -196,6 +207,70 @@
           }]
         }
       });
+    }
+
+    function renderTheatreRevenue(data = []) {
+      const container = document.getElementById("theatreRevenueContainer");
+      if (!data.length) {
+        container.innerHTML = '<p class="text-muted text-center">No theatre revenue data available.</p>';
+        return;
+      }
+
+      let html = '';
+
+      data.forEach(t => {
+        html += `
+          <div class="my-4 p-4 border rounded-3" style="border-left: 5px solid #ff3d00;">
+            <h5 class="fw-bold text-dark mb-3">${t.theatre_name} <small class="text-muted">(ID: ${t.theatre_id})</small></h5>
+            <div class="row text-center mb-4 g-2">
+              <div class="col-md-4">
+                <p class="mb-0 text-muted small">Total Revenue</p>
+                <h4 class="text-primary fw-bold">₹${t.total_revenue.toFixed(2)}</h4>
+              </div>
+              <div class="col-md-4">
+                <p class="mb-0 text-muted small">Ticket Revenue</p>
+                <h4 class="text-success fw-bold">₹${t.ticket_revenue.toFixed(2)}</h4>
+              </div>
+              <div class="col-md-4">
+                <p class="mb-0 text-muted small">Parking Revenue</p>
+                <h4 class="text-danger fw-bold">₹${t.parking_revenue.toFixed(2)}</h4>
+              </div>
+            </div>
+            
+            <h6 class="mt-4 mb-2 text-secondary">Screen Breakdown:</h6>
+            <div class="table-responsive">
+              <table class="table table-striped table-sm align-middle">
+                <thead>
+                  <tr>
+                    <th scope="col" style="width: 40%;">Screen</th>
+                    <th scope="col" class="text-end">Ticket Revenue</th>
+                    <th scope="col" class="text-end">Parking Fee</th>
+                    <th scope="col" class="text-end">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+        `;
+
+        t.screens.forEach(s => {
+          html += `
+            <tr>
+              <td>${s.screen_name} <small class="text-muted">(ID: ${s.screen_id})</small></td>
+              <td class="text-end">₹${s.ticket_revenue.toFixed(2)}</td>
+              <td class="text-end">₹${s.parking_revenue.toFixed(2)}</td>
+              <td class="text-end fw-bold">₹${s.total_revenue.toFixed(2)}</td>
+            </tr>
+          `;
+        });
+
+        html += `
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
     }
 
     loadDashboard();
