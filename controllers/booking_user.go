@@ -57,6 +57,8 @@ func CreateBooking(db *gorm.DB) gin.HandlerFunc {
 			ShowID        uint     `json:"show_id"`
 			SeatCodes     []string `json:"seat_codes"`
 			PaymentMethod string   `json:"payment_method"`
+			HasParking    bool     `json:"has_parking"`
+			VehicleType   string   `json:"vehicle_type"`
 		}
 
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -72,12 +74,45 @@ func CreateBooking(db *gorm.DB) gin.HandlerFunc {
 		}
 		userID := userIDRaw.(uint)
 
-		// Validate show
 		var show models.Show
-		if err := db.First(&show, req.ShowID).Error; err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Show not found"})
+		if err := db.Preload("Screen.Theatre").First(&show, req.ShowID).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Show or associated venue data not found"})
 			return
 		}
+
+		// 🔹 Parking Fee Calculation and Validation
+		var parkingFee float64 = 0.0
+		var vehicleType string = ""
+		var parkingAvailable = show.Screen.Theatre.ParkingAvailable
+
+		if req.HasParking {
+			if !parkingAvailable {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Parking not available at this theatre"})
+				return
+			}
+
+			switch strings.ToLower(req.VehicleType) {
+			case "car":
+				parkingFee = show.Screen.Theatre.CarParkingFee
+				vehicleType = "Car"
+			case "bike":
+				parkingFee = show.Screen.Theatre.BikeParkingFee
+				vehicleType = "Bike"
+			default:
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid vehicle type for parking"})
+				return
+			}
+		} else if req.VehicleType != "" {
+			// If HasParking is false but VehicleType is provided, ignore the VehicleType
+			req.VehicleType = ""
+		}
+
+		// Validate show
+		// var show models.Show
+		// if err := db.First(&show, req.ShowID).Error; err != nil {
+		// 	c.JSON(http.StatusNotFound, gin.H{"error": "Show not found"})
+		// 	return
+		// }
 
 		// ❗ New validation: Check if requested seat codes are physically valid for the show's capacity
 		for _, code := range req.SeatCodes {
@@ -130,8 +165,9 @@ func CreateBooking(db *gorm.DB) gin.HandlerFunc {
 			})
 		}
 
-		// Calculate total
-		totalAmount := float64(len(req.SeatCodes)) * show.Price
+		// Calculate total: Seat Subtotal + Parking Fee
+		seatSubtotal := float64(len(req.SeatCodes)) * show.Price
+		totalAmount := seatSubtotal + parkingFee
 
 		// Create booking
 		booking := models.Booking{
@@ -142,6 +178,9 @@ func CreateBooking(db *gorm.DB) gin.HandlerFunc {
 			Status:        "pending",
 			PaymentMethod: req.PaymentMethod,
 			CreatedAt:     time.Now(),
+			HasParking:    req.HasParking,
+			VehicleType:   vehicleType,
+			ParkingFee:    parkingFee,
 		}
 
 		if err := tx.Create(&booking).Error; err != nil {
@@ -175,10 +214,12 @@ func CreateBooking(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusCreated, gin.H{
-			"message":  "Booking created successfully",
-			"booking":  fullBooking,
-			"seats":    bookingSeats,
-			"subtotal": totalAmount,
+			"message":       "Booking created successfully",
+			"booking":       fullBooking,
+			"seats":         bookingSeats,
+			"subtotal":      totalAmount,
+			"seat_subtotal": seatSubtotal,
+			"parking_fee":   parkingFee,
 		})
 	}
 }

@@ -11,6 +11,11 @@ func SeedDummyTheatres() {
 		{
 			Name:     "Galaxy Cinemas",
 			Location: "Calicut",
+
+			ParkingAvailable: true,
+			CarParkingFee:    50.00,
+			BikeParkingFee:   20.00,
+
 			Screens: []models.Screen{
 				{Name: "Screen 1", SeatsTotal: 100},
 				{Name: "Screen 2", SeatsTotal: 120},
@@ -19,6 +24,11 @@ func SeedDummyTheatres() {
 		{
 			Name:     "Dreams Multiplex",
 			Location: "Malappuram",
+
+			ParkingAvailable: true,
+			CarParkingFee:    40.00,
+			BikeParkingFee:   15.00,
+
 			Screens: []models.Screen{
 				{Name: "Screen 1", SeatsTotal: 90},
 			},
@@ -26,6 +36,11 @@ func SeedDummyTheatres() {
 		{
 			Name:     "CineVerse Theatre",
 			Location: "Manjeri",
+
+			ParkingAvailable: true,
+			CarParkingFee:    30.00,
+			BikeParkingFee:   10.00,
+
 			Screens: []models.Screen{
 				{Name: "Screen 1", SeatsTotal: 60},
 				{Name: "Screen 2", SeatsTotal: 80},

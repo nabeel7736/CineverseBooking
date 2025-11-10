@@ -49,12 +49,15 @@ type Movie struct {
 }
 
 type Theatre struct {
-	ID        uint     `gorm:"primaryKey" json:"id"`
-	Name      string   `gorm:"not null" json:"name"`
-	Location  string   `gorm:"not null" json:"location"`
-	Screens   []Screen `gorm:"foreignKey:TheatreID" json:"screens"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID               uint     `gorm:"primaryKey" json:"id"`
+	Name             string   `gorm:"not null" json:"name"`
+	Location         string   `gorm:"not null" json:"location"`
+	Screens          []Screen `gorm:"foreignKey:TheatreID" json:"screens"`
+	ParkingAvailable bool     `json:"parking_available" gorm:"default:false"`
+	CarParkingFee    float64  `json:"car_parking_fee" gorm:"type:decimal(10,2);default:0.0"`
+	BikeParkingFee   float64  `json:"bike_parking_fee" gorm:"type:decimal(10,2);default:0.0"`
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 type Screen struct {
@@ -103,6 +106,9 @@ type Booking struct {
 	TotalAmount   float64       `gorm:"type:decimal(10,2)" json:"total_amount"`
 	Status        string        `gorm:"type:varchar(20);default:'pending';index" json:"status"` // e.g., "pending", "confirmed", "cancelled"
 	PaymentMethod string        `gorm:"size:50" json:"payment_method"`
+	HasParking    bool          `json:"has_parking" gorm:"default:false"`
+	VehicleType   string        `json:"vehicle_type" gorm:"size:20"` // "Car" or "Bike"
+	ParkingFee    float64       `json:"parking_fee" gorm:"type:decimal(10,2);default:0.0"`
 	CreatedAt     time.Time     `gorm:"autoCreateTime;index" json:"created_at"`
 	UpdatedAt     time.Time     `gorm:"autoUpdateTime" json:"updated_at"`
 	Seats         []BookingSeat `gorm:"foreignKey:BookingID" json:"seats"`
