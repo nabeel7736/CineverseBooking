@@ -185,7 +185,7 @@
     <div class="content">
       <div class="d-flex align-items-center justify-content-between mb-4 gap-2 flex-wrap">
         <div>
-          <h2>🎬 Manage Shows</h2>
+          <h2>Manage Shows</h2>
           <div class="muted">Create and manage movie shows — pick theatre & screen, set time, price and seats.</div>
         </div>
 
@@ -288,12 +288,26 @@
 
             <div class="col-md-4">
               <label class="form-label">Language</label>
-              <input type="text" id="language" class="form-control" placeholder="e.g. English" />
+              <select id="language" class="form-control" required>
+                <option value="">Select Language</option>
+                <option value="English">English</option>
+                <option value="Malayalam">Malayalam</option>
+                <option value="Hindi">Hindi</option>
+                <option value="Tamil">Tamil</option>
+                <option value="Telugu">Telugu</option>
+                <option value="Other">Other</option>
+              </select>
             </div>
 
             <div class="col-md-4">
               <label class="form-label">Price (₹)</label>
-              <input type="number" id="price" class="form-control" required />
+              <select id="price" class="form-control" required>
+                <option value="">Select Price</option>
+                <option value="150.00">₹120.00</option>
+                <option value="200.00">₹150.00</option>
+                <option value="250.00">₹200.00</option>
+                <option value="300.00">₹250.00</option>
+              </select>
             </div>
 
             <div class="col-md-4">

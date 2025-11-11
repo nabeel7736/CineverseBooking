@@ -164,7 +164,7 @@
     <!-- Main Content -->
     <div class="content flex-grow-1">
       <div class="card p-4 mb-5">
-        <h2>Add New Movie 🎬</h2>
+        <h2>Add New Movie</h2>
         <form id="movieForm">
           <div class="row">
             <div class="col-md-6 mb-3">
@@ -178,8 +178,9 @@
           </div>
 
           <div class="mb-3">
-            <label for="poster_url" class="form-label">Poster URL</label>
-            <input type="url" id="poster_url" class="form-control" placeholder="Enter poster image URL">
+            <label for="poster_file" class="form-label">Poster Image File</label>
+            <input type="file" id="poster_file" class="form-control" accept="image/*">
+            <small class="text-muted">Note: Actual file upload is pending server-side implementation. Sending empty URL for now.</small>
           </div>
 
           <div class="mb-3">
