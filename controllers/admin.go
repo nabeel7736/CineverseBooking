@@ -298,6 +298,18 @@ func AdminDeleteMovie(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
+		var showCount int64
+		if err := db.Model(&models.Show{}).Where("movie_id = ?", movie.ID).Count(&showCount).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check for associated shows"})
+			return
+		}
+
+		if showCount > 0 {
+			c.JSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("Cannot delete movie: it is currently scheduled in %d show(s).", showCount)})
+			return
+
+		}
+
 		// Delete poster file if it exists
 		if movie.PosterURL != "" {
 			// Convert relative URL (/uploads/posters/filename.jpg) → local file path
@@ -309,7 +321,7 @@ func AdminDeleteMovie(db *gorm.DB) gin.HandlerFunc {
 			}
 		}
 
-		// Delete movie record from DB
+		// Delete movie from db
 		if err := db.Delete(&movie).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete movie"})
 			return
