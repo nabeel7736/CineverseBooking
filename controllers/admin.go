@@ -98,38 +98,7 @@ func AdminAddMovie(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-// Admin: Add Movie
-// func AdminAddMovie(db *gorm.DB) gin.HandlerFunc {
-// 	return func(c *gin.Context) {
-// 		var m models.Movie
-// 		if err := c.ShouldBind(&m); err != nil {
-// 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-// 			return
-// 		}
-// 		if strings.TrimSpace(m.Title) == "" {
-// 			c.JSON(http.StatusBadRequest, gin.H{"error": "title is required"})
-// 			return
-// 		}
-// 		if err := db.Create(&m).Error; err != nil {
-// 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-// 			return
-// 		}
-
-// 		var PosterURL string = ""
-// 		file, err := c.FormFile("poster_file")
-// 		if err == nil {
-// 			posterURL = "/uploads/posters/" + file.Filename
-// 		} else if err != http.ErrMissingFile {
-// 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read file"})
-// 			return
-
-// 		}
-
-// 		c.JSON(http.StatusCreated, gin.H{"movie": m})
-// 	}
-// }
-
-// Admin: List all bookings (with optional status filter)
+// Admin: List all bookings
 func GetAllBookings(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var bookings []models.Booking
@@ -329,18 +298,18 @@ func AdminDeleteMovie(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		// ✅ Delete poster file if it exists
+		// Delete poster file if it exists
 		if movie.PosterURL != "" {
 			// Convert relative URL (/uploads/posters/filename.jpg) → local file path
 			filePath := "." + movie.PosterURL
 			if _, err := os.Stat(filePath); err == nil {
 				if err := os.Remove(filePath); err != nil {
-					log.Printf("⚠️ Failed to delete poster file: %v", err)
+					log.Printf(" Failed to delete poster file: %v", err)
 				}
 			}
 		}
 
-		// ✅ Delete movie record from DB
+		// Delete movie record from DB
 		if err := db.Delete(&movie).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete movie"})
 			return
@@ -350,50 +319,18 @@ func AdminDeleteMovie(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-// func AdminDeleteMovie(db *gorm.DB) gin.HandlerFunc {
-// 	return func(c *gin.Context) {
-// 		idStr := c.Param("id")
-// 		id, err := strconv.Atoi(idStr)
-// 		if err != nil {
-// 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Movie ID"})
-// 			return
-// 		}
-
-// 		var movie models.Movie
-// 		if err := db.First(&movie, id).Error; err != nil {
-// 			c.JSON(http.StatusNotFound, gin.H{"error": "Movie not Found"})
-// 			return
-// 		}
-
-// 		if err := db.Where("movie_id = ?", id).Delete(&models.Show{}).Error; err != nil {
-// 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete related shows"})
-// 			return
-// 		}
-
-// 		if err := db.Unscoped().Delete(&movie, id).Error; err != nil {
-// 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-// 			return
-// 		}
-// 		var movies []models.Movie
-// 		db.Find(&movies)
-// 		c.JSON(http.StatusOK, gin.H{"message": "movie deleted", "movies": movies})
-// 	}
-// }
-
 func AdminAddShow(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Define a temporary struct for parsing JSON
 		var payload struct {
 			MovieID    uint    `json:"movie_id"`
 			TheatreID  uint    `json:"theatre_id"`
 			ScreenID   uint    `json:"screen_id"`
-			StartTime  string  `json:"start_time"` // receive as string
+			StartTime  string  `json:"start_time"`
 			Language   string  `json:"language"`
 			Price      float64 `json:"price"`
 			SeatsTotal int     `json:"seats_total"`
 		}
 
-		// Bind the payload
 		if err := c.ShouldBindJSON(&payload); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
@@ -510,6 +447,22 @@ func AdminDeleteShow(db *gorm.DB) gin.HandlerFunc {
 			c.JSON(http.StatusNotFound, gin.H{"error": "show not found"})
 			return
 		}
+
+		var activeBookingsCount int64
+		err := db.Model(&models.Booking{}).
+			Where("show_id = ? AND status IN (?, ?)", id, "confirmed", "pending").
+			Count(&activeBookingsCount).Error
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check for active bookings"})
+			return
+		}
+
+		if activeBookingsCount > 0 {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Cannot delete show: active bookings exist for this show."})
+			return
+		}
+
 		if err := db.Delete(&models.Show{}, id).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -546,6 +499,24 @@ func AdminEditShow(db *gorm.DB) gin.HandlerFunc {
 		if err := db.First(&show, id).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Show not found"})
 			return
+		}
+
+		var activeBookingsCount int64
+		db.Model(&models.Booking{}).
+			Where("show_id = ? AND status IN (?, ?)", id, "confirmed", "pending").
+			Count(&activeBookingsCount)
+
+		if activeBookingsCount > 0 {
+			if (payload.ScreenID != 0 && payload.ScreenID != show.ScreenID) ||
+				(payload.MovieID != 0 && payload.MovieID != show.MovieID) {
+				c.JSON(http.StatusForbidden, gin.H{"error": "Cannot change movie or screen: active bookings exist."})
+				return
+			}
+
+			if payload.Seats != 0 && payload.Seats < show.SeatsBooked {
+				c.JSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("Cannot reduce total seats below %d (currently booked).", show.SeatsBooked)})
+				return
+			}
 		}
 
 		if payload.ScreenID != 0 && payload.ScreenID != show.ScreenID {
