@@ -25,6 +25,8 @@ func main() {
 	utils.SeedDummyTheatres()
 
 	r := routes.SetupRouter()
+	r.Static("/uploads", "./uploads")
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"

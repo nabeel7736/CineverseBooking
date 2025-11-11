@@ -257,17 +257,25 @@
       e.preventDefault();
       const token = localStorage.getItem('access_token');
 
+      const formData = new FormData();
+      formData.append('title', document.getElementById('title').value);
+      formData.append('description', document.getElementById('description').value);
+      formData.append('duration_min', document.getElementById('duration').value);
+      formData.append('poster_file', document.getElementById('poster_file').files[0]);
+      
+      const posterFile = document.getElementById('poster_file').files[0];
+      if (posterFile) {
+        formData.append('poster_file', posterFile);
+      }
+
       const res = await fetch('/api/admin/movies', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
+          // NOTE: Do NOT set 'Content-Type': 'multipart/form-data'. 
+          // The browser sets it automatically with the correct boundary when using FormData.
         },
-        body: JSON.stringify({
-          title: document.getElementById('title').value,
-          description: document.getElementById('description').value,
-          duration_min: document.getElementById('duration').value
-        })
+        body: formData
       });
 
       const data = await res.json();

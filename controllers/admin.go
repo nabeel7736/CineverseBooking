@@ -1,7 +1,11 @@
 package controllers
 
 import (
+	"fmt"
+	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -31,26 +35,99 @@ func GetTotalBookingsFromDB(db *gorm.DB) int64 {
 	return count
 }
 
-// Admin: Add Movie
 func AdminAddMovie(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var m models.Movie
-		if err := c.ShouldBind(&m); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		if strings.TrimSpace(m.Title) == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "title is required"})
-			return
-		}
-		if err := db.Create(&m).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		// Parse multipart form (needed for file upload)
+		if err := c.Request.ParseMultipartForm(10 << 20); err != nil { // 10 MB max
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse form"})
 			return
 		}
 
-		c.JSON(http.StatusCreated, gin.H{"movie": m})
+		title := c.PostForm("title")
+		description := c.PostForm("description")
+		durationMin := c.PostForm("duration_min")
+
+		if strings.TrimSpace(title) == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Title is required"})
+			return
+		}
+
+		// Handle poster upload
+		var posterURL string
+		file, err := c.FormFile("poster_file")
+		if err == nil {
+			uploadPath := "./uploads/posters/"
+			if err := os.MkdirAll(uploadPath, os.ModePerm); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create upload directory"})
+				return
+			}
+
+			// Save file with unique name (timestamp to avoid collisions)
+			filename := fmt.Sprintf("%d_%s", time.Now().UnixNano(), filepath.Base(file.Filename))
+			filePath := filepath.Join(uploadPath, filename)
+
+			if err := c.SaveUploadedFile(file, filePath); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save poster image"})
+				return
+			}
+
+			// Public URL for frontend
+			posterURL = "/uploads/posters/" + filename
+		} else if err != http.ErrMissingFile {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read file"})
+			return
+		}
+
+		movie := models.Movie{
+			Title:       title,
+			Description: description,
+			DurationMin: durationMin,
+			PosterURL:   posterURL,
+			ReleaseDate: nil,
+		}
+
+		if err := db.Create(&movie).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save movie"})
+			return
+		}
+
+		c.JSON(http.StatusCreated, gin.H{
+			"message": "Movie added successfully",
+			"movie":   movie,
+		})
 	}
 }
+
+// Admin: Add Movie
+// func AdminAddMovie(db *gorm.DB) gin.HandlerFunc {
+// 	return func(c *gin.Context) {
+// 		var m models.Movie
+// 		if err := c.ShouldBind(&m); err != nil {
+// 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+// 			return
+// 		}
+// 		if strings.TrimSpace(m.Title) == "" {
+// 			c.JSON(http.StatusBadRequest, gin.H{"error": "title is required"})
+// 			return
+// 		}
+// 		if err := db.Create(&m).Error; err != nil {
+// 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+// 			return
+// 		}
+
+// 		var PosterURL string = ""
+// 		file, err := c.FormFile("poster_file")
+// 		if err == nil {
+// 			posterURL = "/uploads/posters/" + file.Filename
+// 		} else if err != http.ErrMissingFile {
+// 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read file"})
+// 			return
+
+// 		}
+
+// 		c.JSON(http.StatusCreated, gin.H{"movie": m})
+// 	}
+// }
 
 // Admin: List all bookings (with optional status filter)
 func GetAllBookings(db *gorm.DB) gin.HandlerFunc {
@@ -241,35 +318,67 @@ func AdminListMovies(db *gorm.DB) gin.HandlerFunc {
 }
 
 // Admin: Delete Movie
+
 func AdminDeleteMovie(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		idStr := c.Param("id")
-		id, err := strconv.Atoi(idStr)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Movie ID"})
-			return
-		}
+		id := c.Param("id")
 
 		var movie models.Movie
 		if err := db.First(&movie, id).Error; err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Movie not Found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": "Movie not found"})
 			return
 		}
 
-		if err := db.Where("movie_id = ?", id).Delete(&models.Show{}).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete related shows"})
+		// ✅ Delete poster file if it exists
+		if movie.PosterURL != "" {
+			// Convert relative URL (/uploads/posters/filename.jpg) → local file path
+			filePath := "." + movie.PosterURL
+			if _, err := os.Stat(filePath); err == nil {
+				if err := os.Remove(filePath); err != nil {
+					log.Printf("⚠️ Failed to delete poster file: %v", err)
+				}
+			}
+		}
+
+		// ✅ Delete movie record from DB
+		if err := db.Delete(&movie).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete movie"})
 			return
 		}
 
-		if err := db.Unscoped().Delete(&movie, id).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		var movies []models.Movie
-		db.Find(&movies)
-		c.JSON(http.StatusOK, gin.H{"message": "movie deleted", "movies": movies})
+		c.JSON(http.StatusOK, gin.H{"message": "Movie deleted successfully"})
 	}
 }
+
+// func AdminDeleteMovie(db *gorm.DB) gin.HandlerFunc {
+// 	return func(c *gin.Context) {
+// 		idStr := c.Param("id")
+// 		id, err := strconv.Atoi(idStr)
+// 		if err != nil {
+// 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Movie ID"})
+// 			return
+// 		}
+
+// 		var movie models.Movie
+// 		if err := db.First(&movie, id).Error; err != nil {
+// 			c.JSON(http.StatusNotFound, gin.H{"error": "Movie not Found"})
+// 			return
+// 		}
+
+// 		if err := db.Where("movie_id = ?", id).Delete(&models.Show{}).Error; err != nil {
+// 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete related shows"})
+// 			return
+// 		}
+
+// 		if err := db.Unscoped().Delete(&movie, id).Error; err != nil {
+// 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+// 			return
+// 		}
+// 		var movies []models.Movie
+// 		db.Find(&movies)
+// 		c.JSON(http.StatusOK, gin.H{"message": "movie deleted", "movies": movies})
+// 	}
+// }
 
 func AdminAddShow(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -421,6 +530,7 @@ func AdminEditShow(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		var payload struct {
+			ScreenID  uint      `json:"screen_id"`
 			MovieID   uint      `json:"movie_id" form:"movie_id"`
 			StartTime time.Time `json:"start_time" form:"start_time"`
 			Seats     int       `json:"seats_total" form:"seats_total"`
@@ -436,6 +546,16 @@ func AdminEditShow(db *gorm.DB) gin.HandlerFunc {
 		if err := db.First(&show, id).Error; err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Show not found"})
 			return
+		}
+
+		if payload.ScreenID != 0 && payload.ScreenID != show.ScreenID {
+			var screen models.Screen
+			if err := db.First(&screen, payload.ScreenID).Error; err == nil {
+				show.ScreenID = payload.ScreenID
+			} else {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Screen ID provided"})
+				return
+			}
 		}
 
 		if payload.MovieID != 0 {
