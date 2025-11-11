@@ -31,6 +31,11 @@ func InitiatePayment(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
+		if booking.TotalAmount != req.Amount {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Payment amount mismatch with booking total"})
+			return
+		}
+
 		// mock “gateway” processing delay or token generation
 		payment := models.Payment{
 			BookingID: req.BookingID,
@@ -54,41 +59,76 @@ func InitiatePayment(db *gorm.DB) gin.HandlerFunc {
 
 }
 
-// 🔹 POST /api/payments/mock/confirm/:id
 // Step 2 – simulate Razorpay/Stripe webhook
 func MockConfirmPayment(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		id := c.Param("id")
 
+		tx := db.Begin()
+		defer func() {
+			if r := recover(); r != nil {
+				tx.Rollback()
+			}
+		}()
+
 		var payment models.Payment
-		if err := db.First(&payment, id).Error; err != nil {
+		if err := tx.First(&payment, id).Error; err != nil {
+			tx.Rollback()
 			c.JSON(http.StatusNotFound, gin.H{"error": "Payment not found"})
 			return
 		}
 
 		var booking models.Booking
-		if err := db.First(&booking, payment.BookingID).Error; err != nil {
+		if err := tx.First(&booking, payment.BookingID).Error; err != nil {
+			tx.Rollback()
 			c.JSON(http.StatusNotFound, gin.H{"error": "Booking not found"})
+			return
+		}
+
+		if booking.Status == "confirmed" {
+			tx.Commit()
+			c.JSON(http.StatusOK, gin.H{
+				"message": "Payment already confirmed",
+				"booking": booking.ID,
+				"status":  booking.Status,
+			})
 			return
 		}
 
 		wasConfirmed := booking.Status == "confirmed"
 
 		// mock successful payment (90 % success rate)
-		payment.Status = "success"
+		payment.Status = "completed"
 		payment.UpdatedAt = time.Now()
 		booking.Status = "confirmed"
 
-		db.Save(&payment)
-		db.Save(&booking)
+		if err := tx.Save(&payment).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update payment status"})
+			return
+		}
+		if err := tx.Save(&booking).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update booking status"})
+			return
+		}
 
 		if !wasConfirmed {
 			var show models.Show
-			if err := db.First(&show, booking.ShowID).Error; err == nil {
+			if err := tx.First(&show, booking.ShowID).Error; err == nil {
 				show.SeatsBooked += booking.SeatsCount
-				db.Save(&show)
+				if err := tx.Save(&show).Error; err != nil {
+					tx.Rollback()
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update seats count"})
+					return
+				}
 			}
+		}
+
+		if err := tx.Commit().Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
+			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{
