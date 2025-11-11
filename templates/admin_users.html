@@ -53,6 +53,9 @@
       background: #1f1f1f;
       color: #fff;
       border-left: 4px solid #ff3d00;
+      transform: translate(-1px,0px);
+-webkit-transform: translate(-1px,0px);
+-moz-transform: translate(-1px,0px);
     }
 
     .sidebar hr {
@@ -181,10 +184,10 @@
 
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
           <div class="d-flex">
-            <input type="text" id="searchInput" class="form-control w-auto flex-grow-1 me-2" placeholder="🔍 Search user..." style="max-width: 280px;" />
+            <input type="text" id="searchInput" class="form-control w-auto flex-grow-1 me-2" placeholder=" Search user..." style="max-width: 280px;" />
             <button class="btn btn-primary me-2" onclick="fetchUsers()">Refresh</button>
           </div>
-          <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addUserModal">➕ Add User</button>
+          <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addUserModal">+ Add User</button>
         </div>
 
         <div class="table-responsive">

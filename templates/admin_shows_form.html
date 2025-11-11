@@ -42,7 +42,7 @@
       color: var(--accent);
       text-align:center;
       font-weight:700;
-      margin-bottom:1.5rem;
+      margin-bottom:2rem;
       letter-spacing:1px;
     }
     .sidebar a{
@@ -52,13 +52,16 @@
       text-decoration:none;
       font-weight:500;
       border-left:4px solid transparent;
-      transition: all .2s ease;
+      transition: all .25s ease;
     }
     .sidebar a:hover,
     .sidebar a.active{
       background:#1f1f1f;
       color:#fff;
       border-left:4px solid var(--accent);
+      transform: translate(-1px,0px);
+-webkit-transform: translate(-1px,0px);
+-moz-transform: translate(-1px,0px);
     }
     .sidebar hr{ border-color:#2c2c2c; margin:1.5rem 0; }
 
@@ -249,7 +252,7 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content rounded-3">
         <div class="modal-header bg-light">
-          <h5 class="modal-title">➕ Add New Show</h5>
+          <h5 class="modal-title">Add New Show</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
 
