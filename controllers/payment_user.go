@@ -3,15 +3,12 @@ package controllers
 import (
 	"cineverse/models"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-// 🔹 POST /api/payments/initiate
-// Step 1 – user initiates mock payment
 func InitiatePayment(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
@@ -36,7 +33,6 @@ func InitiatePayment(db *gorm.DB) gin.HandlerFunc {
 			return
 		}
 
-		// mock “gateway” processing delay or token generation
 		payment := models.Payment{
 			BookingID: req.BookingID,
 			Amount:    req.Amount,
@@ -51,15 +47,14 @@ func InitiatePayment(db *gorm.DB) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"message":       "Payment initiated",
-			"payment_id":    payment.ID,
-			"mock_redirect": "/api/payments/mock/confirm/" + strconv.Itoa(int(payment.ID)),
+			"message":    "Payment initiated",
+			"payment_id": payment.ID,
+			// "mock_redirect": "/api/payments/mock/confirm/" + strconv.Itoa(int(payment.ID)),
 		})
 	}
 
 }
 
-// Step 2 – simulate Razorpay/Stripe webhook
 func MockConfirmPayment(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
@@ -142,7 +137,6 @@ func MockConfirmPayment(db *gorm.DB) gin.HandlerFunc {
 	}
 }
 
-// 🔹 GET /api/payments/user
 func GetUserPayments(db *gorm.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
